@@ -1,0 +1,111 @@
+{
+    "107082208571512": {
+        "phone": "107082208571512",
+        "created_at": 1769868219.217225,
+        "last_updated": 1769878149.411791,
+        "interaction_count": 2,
+        "history": [
+            {
+                "timestamp": 1769868219.2172334,
+                "role": "user",
+                "message": "Bom dia, meu amor, meu menino já desceu, viu, para fazer o ensaimo aí. Ele já desceu, levou a urina. Aí, tudo isso aí, o dia, que é para pegar esses ensaimos, que é para poder juntar tudo, para poder levar para o cardiologista.",
+                "intent": null
+            },
+            {
+                "timestamp": 1769878126.9379218,
+                "role": "user",
+                "message": "Oi",
+                "intent": null
+            },
+            {
+                "timestamp": 1769878149.411507,
+                "role": "user",
+                "message": "Bom dia, meu amor, meu menino já desceu, viu, para fazer o ensaimo aí. Ele já desceu, levou a urina. Aí, tudo isso aí, o dia, que é para pegar esses ensaimos, que é para poder juntar tudo, para poder levar para o cardiologista.",
+                "intent": null
+            }
+        ],
+        "status": "AGUARDANDO_HUMANO",
+        "data": {
+            "name": "João Teles"
+        },
+        "last_action": "HANDOFF_AUDIO"
+    },
+    "99505886212103": {
+        "phone": "99505886212103",
+        "created_at": 1769869494.6406965,
+        "last_updated": 1769870220.4241714,
+        "interaction_count": 2,
+        "history": [
+            {
+                "timestamp": 1769869494.6407125,
+                "role": "user",
+                "message": "Bom dia",
+                "intent": null
+            },
+            {
+                "timestamp": 1769869511.6131272,
+                "role": "user",
+                "message": "Queria o resultado de meus exames",
+                "intent": "RESULTADO"
+            },
+            {
+                "timestamp": 1769869534.0013478,
+                "role": "user",
+                "message": "",
+                "intent": null
+            },
+            {
+                "timestamp": 1769869551.2744036,
+                "role": "user",
+                "message": "Obrigado.",
+                "intent": null
+            },
+            {
+                "timestamp": 1769869589.417691,
+                "role": "user",
+                "message": "Bom dia, meu amor, meu menino já desceu, viu, para fazer o ensaimo aí. Ele já desceu, levou a urina. Aí, tudo isso aí, o dia, que é para pegar esses ensaimos, que é para poder juntar tudo, para poder levar para o cardiologista.",
+                "intent": null
+            },
+            {
+                "timestamp": 1769870220.4238615,
+                "role": "user",
+                "message": "Bom dia, meu amor, meu menino já desceu, viu, para fazer o ensaimo aí. Ele já desceu, levou a urina. Aí, tudo isso aí, o dia, que é para pegar esses ensaimos, que é para poder juntar tudo, para poder levar para o cardiologista.",
+                "intent": null
+            }
+        ],
+        "status": "CADASTRO_PEDIR_NOME",
+        "data": {},
+        "last_action": "ASK_NAME"
+    },
+    "200171279356026": {
+        "phone": "200171279356026",
+        "created_at": 1769869556.5309186,
+        "last_updated": 1769869655.7493641,
+        "interaction_count": 1,
+        "history": [
+            {
+                "timestamp": 1769869556.5309258,
+                "role": "user",
+                "message": "Bom dia",
+                "intent": null
+            },
+            {
+                "timestamp": 1769869563.966197,
+                "role": "user",
+                "message": "2",
+                "intent": "RESULTADO"
+            },
+            {
+                "timestamp": 1769869655.7493427,
+                "role": "user",
+                "message": "Bom dia, eu quero o resultado dos meus exames.",
+                "intent": "RESULTADO"
+            }
+        ],
+        "status": "AGUARDANDO_HUMANO",
+        "data": {
+            "name": "Raphaela Montana"
+        },
+        "last_action": "PROOF_RECEIVED"
+    }
+}

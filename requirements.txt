@@ -1,0 +1,12 @@
+fastapi>=0.100.0
+uvicorn>=0.20.0
+python-multipart
+requests
+unidecode
+python-dotenv
+streamlit
+watchdog
+# Audio Processing (Heavy - remove if strictly only using Hibernation Mode)
+openai-whisper
+# Database
+# sqlite3 is built-in to Python, no install needed.
