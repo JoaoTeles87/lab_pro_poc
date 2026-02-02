@@ -18,12 +18,13 @@ sudo npm install -g pm2
 
 # 4. Setup Python Backend
 echo "🐍 Configurando Backend Python..."
+# Ensure venv is fresh
+rm -rf .venv
 python3 -m venv .venv
-source .venv/bin/activate
-pip install uv
-uv sync # Or pip install -r requirements.txt if using standard pip
-# Install actual deps
-pip install fastapi uvicorn requests unidecode python-dotenv openai-whisper
+# Use full path to venv pip to avoid path issues
+./.venv/bin/pip install uv
+./.venv/bin/uv sync 2>/dev/null || ./.venv/bin/pip install -r requirements.txt
+./.venv/bin/pip install fastapi uvicorn requests unidecode python-dotenv openai-whisper
 
 # 5. Setup Node Gateway
 echo "🌐 Configurando Gateway..."
@@ -33,8 +34,12 @@ cd ..
 
 # 6. Start Everything
 echo "🔥 Iniciando serviços com PM2..."
-# We use the venv python for the backend
-pm2 start ecosystem.config.js --interpreter ./.venv/bin/python3
+# Delete old processes if they exist
+pm2 delete lab-backend 2>/dev/null
+pm2 delete lab-gateway 2>/dev/null
+
+# Start using ecosystem
+pm2 start ecosystem.config.js
 
 # 7. Save startup list
 pm2 save
