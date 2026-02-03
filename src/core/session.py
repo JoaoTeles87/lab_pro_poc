@@ -321,8 +321,7 @@ class SessionManager:
             else:
                  reply_message = "Por favor, envie a **foto do pedido** ou digite os nomes dos exames para prosseguirmos. 📸"
 
-                else:
-                    reply_message = "Aceitamos somente CASSI, BM, CLINMELO ou Particular (à vista/espécie)."
+
 
         elif current_status == "AGENDAMENTO_PEDIR_PLANO":
             # Reuse logic or simplify
