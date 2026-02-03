@@ -180,6 +180,12 @@ class SessionManager:
                 reply_message = "O exame Toxicológico 🚦 é realizado por ordem de chegada.\nNecessário CNH. Valor: R$ 130,00."
                 session["status"] = "MENU_PRINCIPAL" # Return to menu
             
+            elif any(x in normalize_text_simple(message) for x in ["ok", "ta bem", "tá bem", "certo", "obrigado", "obg", "valeu", "entendi", "joia", "beleza"]):
+                # Handle simple acknowledgments without sending the full menu
+                reply_action = "ACK"
+                reply_message = "Disponha! Se precisar de algo, é só chamar. 😉"
+                # Keep in MENU_PRINCIPAL (passive)
+
             else:
                 # Smart Menu Loop Prevention
                 last_act = session.get("last_action")
@@ -277,7 +283,7 @@ class SessionManager:
                     reply_action = "ASK_ORDER"
                     reply_message = "Certo, CLINMELO. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
                 else:
-                    reply_message = "Não entendi qual é o plano. Aceitamos somente CASSI, BM, CLINMELO ou Particular (à vista/espécie)."
+                    reply_message = "Aceitamos somente CASSI, BM, CLINMELO ou Particular (à vista/espécie)."
 
         elif current_status == "ORCAMENTO_PEDIR_PEDIDO":
             # Check for Media (Photo or Document)
