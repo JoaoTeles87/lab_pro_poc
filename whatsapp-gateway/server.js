@@ -164,7 +164,8 @@ async function connectToWhatsApp() {
                 }
             }
         } catch (error) {
-            console.error("Error processing message:", error);
+            // Secure Logging: Don't dump full objects to avoid printing keys/buffers
+            console.error("❌ Error processing message:", error.message || String(error));
         }
     });
 }
