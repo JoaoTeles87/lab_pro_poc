@@ -179,8 +179,8 @@ app.post('/send-message', async (req, res) => {
         console.log(`📤 Respondido para ${number}`);
         res.json({ status: 'sent' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Falha ao enviar' });
+        console.error("FATAL SEND ERROR:", error);
+        res.status(500).json({ error: 'Falha ao enviar', details: error.message || error.toString() });
     }
 });
 
