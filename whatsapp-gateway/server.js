@@ -183,7 +183,7 @@ app.post('/send-message', async (req, res) => {
         console.log("❌ ERROR STACK:", error.stack);
         // Ensure failure is visible
         const safeDetails = error instanceof Error ? error.message : String(error);
-        res.status(500).json({ error: 'Falha ao enviar', details: safeDetails });
+        res.status(500).json({ error: 'CRITICAL GATEWAY FAIL [DEBUG]', details: safeDetails });
     }
 });
 
