@@ -132,6 +132,12 @@ while True:
                             st.warning(f"⚠️ SLA Estourado (+{int(elapsed_min)} min)")
                         else:
                             st.info("Dentro do prazo")
+                        
+                        if st.button("✅ Finalizar", key=f"btn_{phone}"):
+                            database.delete_session(phone) # Or reset to MENU
+                            st.toast(f"Sessão {phone} finalizada!")
+                            time.sleep(1)
+                            st.rerun()
             
             if not found:
                 st.info("Fila vazia. 🙌")

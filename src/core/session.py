@@ -125,11 +125,23 @@ class SessionManager:
                           any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "menu", "inicio"]) or 
                           message.strip() in ["1", "2", "3", "4"])
         
-        if is_reset_input and current_status != "AGUARDANDO_HUMANO":
+             if saved_name: session["data"]["name"] = saved_name
+        
+        # ADMIN COMMAND (Human Override)
+        # Allows the human attendant to type "#bot" or "#reset" to return control to AI
+        if message.strip().lower() in ["#bot", "#reset", "#voltar"]:
              current_status = "MENU_PRINCIPAL"
-             # Clear data but preserve Name
+             reply_action = "SEND_MENU"
+             name_display = session["data"].get("name", "Cliente")
+             reply_message = (f"🤖 Controle retornado ao Robô.\nOlá novamente, *{name_display}*! 👋\n"
+                              "1. Orçamentos 💰\n"
+                              "2. Resultados 🧪\n"
+                              "3. Agendamento 📆\n"
+                              "4. Toxicológico")
+             
+             # Reset session data but keep name
              saved_name = session["data"].get("name")
-             session["data"] = {} 
+             session["data"] = {}
              if saved_name: session["data"]["name"] = saved_name
 
         # LOGIC
@@ -171,13 +183,13 @@ class SessionManager:
                 reply_message = "Para verificar seus resultados 🧪, por favor envie a **foto do comprovante** de pagamento/atendimento. 📸"
             
             elif intent == "AGENDAMENTO":
-                session["status"] = "AGENDAMENTO_PEDIR_DADOS"
-                reply_action = "ASK_ADDR"
-                reply_message = "Agendamento Domiciliar 🏠.\nPor favor, digite seu **Endereço Completo**."
+                session["status"] = "AGENDAMENTO_PEDIR_PLANO"
+                reply_action = "ASK_PLAN_SCHED"
+                reply_message = "Agendamento Domiciliar 🏠.\nPara iniciar, qual seu **Plano de Saúde** ou seria **Particular**?\n(Aceitamos: CASSI, BM, CLINMELO ou Particular)"
                 
             elif intent == "TOXICOLOGICO":
                 reply_action = "INFO_TOXIC"
-                reply_message = "O exame Toxicológico 🚦 é realizado por ordem de chegada.\nNecessário CNH. Valor: R$ 130,00."
+                reply_message = "O exame Toxicológico 🚦 é realizado por ordem de chegada.\nAtendimento **somente Particular** (R$ 130,00) ou **Pagamento à vista**.\nNecessário CNH."
                 session["status"] = "MENU_PRINCIPAL" # Return to menu
             
             elif any(x in normalize_text_simple(message) for x in ["ok", "ta bem", "tá bem", "certo", "obrigado", "obg", "valeu", "entendi", "joia", "beleza"]):
@@ -303,6 +315,42 @@ class SessionManager:
             
             else:
                  reply_message = "Por favor, envie a **foto do pedido** ou digite os nomes dos exames para prosseguirmos. 📸"
+
+                else:
+                    reply_message = "Aceitamos somente CASSI, BM, CLINMELO ou Particular (à vista/espécie)."
+
+        elif current_status == "AGENDAMENTO_PEDIR_PLANO":
+            # Reuse logic or simplify
+            msg_lower = message.lower()
+            valid_plan = False
+            chosen_plan = "PARTICULAR"
+
+            if any(x in msg_lower for x in ["particular", "dinheiro", "pix", "vista"]):
+                chosen_plan = "PARTICULAR"
+                valid_plan = True
+            elif "cassi" in msg_lower:
+                chosen_plan = "CASSI"
+                valid_plan = True
+            elif any(x in msg_lower for x in ["bm", "b m", "militar"]):
+                chosen_plan = "BM"
+                valid_plan = True
+            elif "clinmelo" in msg_lower or "clin melo" in msg_lower:
+                chosen_plan = "CLINMELO"
+                valid_plan = True
+            
+            # Check Entity
+            plan_ent = entities.get("PLANO_SAUDE")
+            if plan_ent:
+                chosen_plan = plan_ent
+                valid_plan = True
+            
+            if valid_plan:
+                session["data"]["plano"] = chosen_plan
+                session["status"] = "AGENDAMENTO_PEDIR_DADOS"
+                reply_action = "ASK_ADDR"
+                reply_message = f"Certo, plano **{chosen_plan}**. Agora, por favor digite seu **Endereço Completo** para verificarmos a rota. 🚐"
+            else:
+                 reply_message = "Não entendi o plano. Para Agendamento, aceitamos somente: CASSI, BM, CLINMELO ou Particular."
 
         elif current_status == "RESULTADO_PEDIR_COMPROVANTE":
              # 1. Accept valid Media
