@@ -299,16 +299,29 @@ class SessionManager:
                 reply_message = "Nome muito curto. Por favor, digite seu nome completo."
 
         elif current_status == "ORCAMENTO_PEDIR_PLANO":
-            # Capture Plan
-            plan = entities.get("PLANO_SAUDE")
-            if plan:
-                session["data"]["plano"] = plan
-                session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
-                reply_action = "ASK_ORDER"
+            # Capture Plan (Regex/Keyword Logic)
+            msg_lower = message.lower()
+            chosen_plan = None
+            
+            # 1. Try Entity Extraction first
+            if entities.get("PLANO_SAUDE"):
+                chosen_plan = entities.get("PLANO_SAUDE")
+            
+            # 2. Fallback to simple keyword match if entity failed
+            elif any(x in msg_lower for x in ["particular", "dinheiro", "pix", "vista", "sem plano"]):
+                chosen_plan = "PARTICULAR"
+            elif "cassi" in msg_lower:
+                chosen_plan = "CASSI"
+            elif any(x in msg_lower for x in ["bm", "b m", "militar"]):
+                chosen_plan = "BM"
+            elif "clinmelo" in msg_lower:
+                chosen_plan = "CLINMELO"
+
             if chosen_plan:
-                PLAN_NAMES = { "CASSI": "CASSI", "BM": "Polícia Militar (BM)", "CLINMELO": "Clinmelo", "PARTICULAR": "Particular" }
+                # Map Internal ID to Friendly Name
                 friendly_plan = PLAN_NAMES.get(chosen_plan, chosen_plan)
-                
+                if chosen_plan == "PARTICULAR": friendly_plan = "Particular" # Override internal ID if needed
+
                 session["data"]["plano"] = chosen_plan
                 session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
                 reply_action = "ASK_ORDER"
