@@ -115,6 +115,17 @@ class SessionManager:
         
         # Current State
         current_status = session.get("status", "MENU_PRINCIPAL")
+
+        # RE-ENGAGEMENT LOGIC
+        # If the session was previously finalized (archived), receiving a new message
+        # should wake it up as a fresh interaction.
+        if current_status == "FINALIZADO":
+            current_status = "MENU_PRINCIPAL"
+            # Optional: Clear old data? Likely yes, to start fresh.
+            saved_name = session["data"].get("name")
+            session["data"] = {}
+            if saved_name: session["data"]["name"] = saved_name
+            # Don't reset history, let it append.
         
         # RESET logic (if user says "oi", "ola", "menu" intentionally)
         # Note: if users says "oi" inside a flow, we might want to reset or ignore.
@@ -157,7 +168,7 @@ class SessionManager:
             if media_type == "audio":
                  session["status"] = "AGUARDANDO_HUMANO"
                  reply_action = "HANDOFF_AUDIO"
-                 reply_message = "Recebi seu áudio! 🎧\nComo áudios podem conter detalhes importantes, transferi para nossa equipe ouvir com atenção. Aguarde um momento. ⏳"
+                 reply_message = "Recebi seu áudio! \nVou transferir para um de nossos atendentes dar prosseguimento. Aguarde um momento. ⏳"
             
             # Explicit Greeting Re-handling (to avoid "Sorry i didn't understand" for "Oi")
             elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio"]):
