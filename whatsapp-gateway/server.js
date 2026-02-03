@@ -28,7 +28,7 @@ async function connectToWhatsApp() {
         // printQRInTerminal: true, // DEPRECATED
         auth: state,
         // Necessário para chaves de criptografia (Self/LID)
-        syncFullHistory: true
+        syncFullHistory: false // CRITICAL: Disabled to prevent spamming old chats
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -73,6 +73,16 @@ async function connectToWhatsApp() {
     sock.ev.on('messages.upsert', async m => {
         try {
             const msg = m.messages[0];
+
+            // IGNORE OLD MESSAGES (Prevent Spam on Reconnect)
+            // If message is older than 10 seconds, ignore.
+            const msgTime = msg.messageTimestamp;
+            const now = Math.floor(Date.now() / 1000);
+            if (msgTime && (now - msgTime > 10)) {
+                // Silently skip old history
+                return;
+            }
+
             if (!msg.key.fromMe && m.type === 'notify') {
 
                 let text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || "";

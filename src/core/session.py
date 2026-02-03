@@ -6,7 +6,7 @@ from src.core import database
 
 SESSION_FILE = os.path.join("data", "sessions.json")
 MOCK_DB_FILE = os.path.join("data", "mock_db.json")
-SESSION_TIMEOUT = 300 # 5 minutes (Testing Mode)
+SESSION_TIMEOUT = 3600 # 1 hour
 
 class SessionManager:
     def __init__(self):
@@ -172,7 +172,22 @@ class SessionManager:
             "ID_PARTICULAR": "Particular"
         }
         
+             if saved_name: session["data"]["name"] = saved_name
+ 
         # LOGIC
+        # 1. GLOBAL GRATITUDE HANDLER (Runs in ALL states)
+        # If user says "obrigado", "valeu", etc., just reply politely and keep state.
+        gratitude_words = ["obrigado", "obg", "valeu", "grato", "agradecido", "joia", "beleza", "tá bem", "certo", "ok"]
+        if any(x in normalize_text_simple(message) for x in gratitude_words) and len(message) < 20: 
+             reply_action = "ACK"
+             reply_message = "Disponha! Se precisar de algo, é só chamar. 😉"
+             # Return IMMEDIATELY to prevent state transition
+             return {
+                "status": current_status,
+                "reply_message": reply_message,
+                "action": reply_action
+             }
+
         if current_status == "MENU_PRINCIPAL":
             # 0. Global Audio Handoff Rule
             # Audio messages in the main menu often contain complex requests.
@@ -218,14 +233,14 @@ class SessionManager:
                 
             elif intent == "TOXICOLOGICO":
                 reply_action = "INFO_TOXIC"
-                reply_message = "O exame Toxicológico 🚦 é por ordem de chegada.\nAtendimento *somente Particular* (R$ 130,00) ou *Pagamento à vista*.\nNecessário CNH."
+                reply_message = "O exame Toxicológico 🚦 é por ordem de chegada.\nAtendimento *somente Particular* (R$ 150,00) ou *Pagamento à vista*.\nNecessário CNH."
                 session["status"] = "MENU_PRINCIPAL" # Return to menu
             
-            elif any(x in normalize_text_simple(message) for x in ["ok", "ta bem", "tá bem", "certo", "obrigado", "obg", "valeu", "entendi", "joia", "beleza"]):
-                # Handle simple acknowledgments without sending the full menu
-                reply_action = "ACK"
-                reply_message = "Disponha! Se precisar de algo, é só chamar. 😉"
-                # Keep in MENU_PRINCIPAL (passive)
+            # elif any(x in normalize_text_simple(message) for x in ["ok", "ta bem", "tá bem", "certo", "obrigado", "obg", "valeu", "entendi", "joia", "beleza"]):
+            #    # Handle simple acknowledgments without sending the full menu
+            #    reply_action = "ACK"
+            #    reply_message = "Disponha! Se precisar de algo, é só chamar. 😉"
+            #    # Keep in MENU_PRINCIPAL (passive)
 
             else:
                 # Smart Menu Loop Prevention
