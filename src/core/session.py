@@ -120,9 +120,12 @@ class SessionManager:
         # Note: if users says "oi" inside a flow, we might want to reset or ignore.
         # For this POC, strong reset on specific keywords helps navigation.
         # RESET logic (if user says "oi", "ola", "menu" intentionally)
-        # Note: if users says "oi" inside a flow, we might want to reset or ignore.
-        # For this POC, strong reset on specific keywords helps navigation.
-        if intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "menu", "inicio"]):
+        # Note: We EXCLUDE 'AGUARDANDO_HUMANO' from this logic to respect the strict timeline/silence requested.
+        is_reset_input = (intent == "GREETING" or 
+                          any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "menu", "inicio"]) or 
+                          message.strip() in ["1", "2", "3", "4"])
+        
+        if is_reset_input and current_status != "AGUARDANDO_HUMANO":
              current_status = "MENU_PRINCIPAL"
              # Clear data but preserve Name
              saved_name = session["data"].get("name")
