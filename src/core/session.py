@@ -160,6 +160,18 @@ class SessionManager:
              session["data"] = {}
              if saved_name: session["data"]["name"] = saved_name
 
+        # Helper for Friendly Plan Names
+        PLAN_NAMES = {
+            "CASSI": "CASSI",
+            "BM": "Polícia Militar (BM)",
+            "CLINMELO": "Clinmelo",
+            "PARTICULAR": "Private", # Internal, mapped below
+            "ID_CASSI": "CASSI",
+            "ID_BM": "Polícia Militar (BM)",
+            "ID_CLINMELO": "Clinmelo",
+            "ID_PARTICULAR": "Particular"
+        }
+        
         # LOGIC
         if current_status == "MENU_PRINCIPAL":
             # 0. Global Audio Handoff Rule
@@ -178,34 +190,35 @@ class SessionManager:
                                   "1. Solicitação de orçamentos 💰\n"
                                   "2. Solicitação de resultados 🧪\n"
                                   "3. Agendamento domiciliar 📆\n"
-                                  "4. Toxicologico")
+                                  "4. Toxicológico")
             
             # Smart Inference: If user mentions a Plan directly (e.g. "Bradesco"), assume ORCAMENTO
             elif entities.get("PLANO_SAUDE"):
                 plan = entities["PLANO_SAUDE"]
+                friendly_plan = PLAN_NAMES.get(plan, plan)
                 session["data"]["plano"] = plan
                 session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
                 reply_action = "ASK_ORDER"
-                reply_message = f"Entendi, plano {plan}. 🏥\nPara orçamentos, por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
+                reply_message = f"Entendi, plano *{friendly_plan}*. 🏥\nPara orçamentos, por favor envie uma *foto do pedido médico* 📸 ou digite os exames."
             
             elif intent == "ORCAMENTO":
                 session["status"] = "ORCAMENTO_PEDIR_PLANO"
                 reply_action = "ASK_PLAN"
-                reply_message = "Certo, Orçamentos. 💰\nVocê possui plano de saúde ou pagamento **à vista/sem plano**?\n(Ex: CASSI, BM, CLINMELO, Particular)"
+                reply_message = "Certo, Orçamentos. 💰\nVocê possui plano de saúde ou pagamento *à vista/sem plano*?\n(Ex: CASSI, BM, CLINMELO, Particular)"
             
             elif intent == "RESULTADO":
                 session["status"] = "RESULTADO_PEDIR_COMPROVANTE"
                 reply_action = "ASK_PROOF"
-                reply_message = "Para verificar seus resultados 🧪, por favor envie a **foto do comprovante** de pagamento/atendimento. 📸"
+                reply_message = "Para verificar seus resultados 🧪, por favor envie a *foto do comprovante* de pagamento/atendimento. 📸"
             
             elif intent == "AGENDAMENTO":
                 session["status"] = "AGENDAMENTO_PEDIR_PLANO"
                 reply_action = "ASK_PLAN_SCHED"
-                reply_message = "Agendamento Domiciliar 🏠.\nPara iniciar, qual seu **Plano de Saúde** ou seria **Particular**?\n(Aceitamos: CASSI, BM, CLINMELO ou Particular)"
+                reply_message = "Agendamento Domiciliar 🏠.\nPara iniciar, qual seu *Plano de Saúde* ou seria *Particular*?\n(Aceitamos: CASSI, BM, CLINMELO ou Particular)"
                 
             elif intent == "TOXICOLOGICO":
                 reply_action = "INFO_TOXIC"
-                reply_message = "O exame Toxicológico 🚦 é realizado por ordem de chegada.\nAtendimento **somente Particular** (R$ 130,00) ou **Pagamento à vista**.\nNecessário CNH."
+                reply_message = "O exame Toxicológico 🚦 é por ordem de chegada.\nAtendimento *somente Particular* (R$ 130,00) ou *Pagamento à vista*.\nNecessário CNH."
                 session["status"] = "MENU_PRINCIPAL" # Return to menu
             
             elif any(x in normalize_text_simple(message) for x in ["ok", "ta bem", "tá bem", "certo", "obrigado", "obg", "valeu", "entendi", "joia", "beleza"]):
@@ -238,17 +251,12 @@ class SessionManager:
                     reply_action = "SEND_MENU"
                     # Safe Access to Name
                     name_display = session["data"].get("name", "Cliente")
-                    reply_message = (f"Laboratório Pró-Análise agradece o seu contato, *{name_display}*! ✅\n\n"
-                                        "Em que posso te ajudar hoje?😄\n"
-                                        "Esta é uma mensagem automática em breve você será atendido 😉\n\n"
-                                        "1. Solicitação de orçamentos:💰\n"
-                                        "Necessário a requisição médica, caso tenha.\n"
-                                        "Informar se possui algum plano de saúde\n\n"
-                                        "2. Solicitação de resultados de exames: 🧪\n"
-                                        "Necessário envio do COMPROVANTE\n\n"
-                                        "3. Agendamento de coletas domiciliares: 📆\n"
-                                        "Informar os exames e Endereço\n\n"
-                                        "4. Toxicologico")
+                    reply_message = (f"Olá, *{name_display}*! Tudo bem? ✅\n\n"
+                                        "Em que posso ajudar hoje? 😄\n\n"
+                                        "1. Orçamentos 💰\n"
+                                        "2. Resultados de exames 🧪\n"
+                                        "3. Agendamento Domiciliar 📆\n"
+                                        "4. Toxicológico (CNH)")
 
         elif current_status == "CADASTRO_PEDIR_NOME":
             # Capture Name
@@ -266,16 +274,11 @@ class SessionManager:
                 session["status"] = "MENU_PRINCIPAL"
                 reply_action = "WELCOME"
                 reply_message = (f"Obrigado, *{clean_name}*! Prazer em te conhecer. ✨\n\n"
-                                 "Em que posso te ajudar hoje?😄\n"
-                                     "Esta é uma mensagem automática em breve você será atendido 😉\n\n"
-                                     "1. Solicitação de orçamentos:💰\n"
-                                     "Necessário a requisição médica, caso tenha.\n"
-                                     "Informar se possui algum plano de saúde\n\n"
-                                     "2. Solicitação de resultados de exames: 🧪\n"
-                                     "Necessário envio do COMPROVANTE\n\n"
-                                     "3. Agendamento de coletas domiciliares: 📆\n"
-                                     "Informar os exames e Endereço\n\n"
-                                     "4. Toxicologico")
+                                 "Como posso te ajudar?\n\n"
+                                     "1. Orçamentos 💰\n"
+                                     "2. Resultados de exames 🧪\n"
+                                     "3. Agendamento Domiciliar 📆\n"
+                                     "4. Toxicológico")
             else:
                 reply_message = "Nome muito curto. Por favor, digite seu nome completo."
 
@@ -286,32 +289,16 @@ class SessionManager:
                 session["data"]["plano"] = plan
                 session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
                 reply_action = "ASK_ORDER"
-                reply_message = f"Ok, plano {plan}. Agora, por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
+            if chosen_plan:
+                PLAN_NAMES = { "CASSI": "CASSI", "BM": "Polícia Militar (BM)", "CLINMELO": "Clinmelo", "PARTICULAR": "Particular" }
+                friendly_plan = PLAN_NAMES.get(chosen_plan, chosen_plan)
+                
+                session["data"]["plano"] = chosen_plan
+                session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
+                reply_action = "ASK_ORDER"
+                reply_message = f"Certo, plano *{friendly_plan}*. Agora, tire uma *foto do pedido médico* 📸 e mande aqui."
             else:
-                # Try simple key word extraction from message if entity failed
-                msg_lower = message.lower()
-                if any(x in msg_lower for x in ["particular", "dinheiro", "pix", "vista"]):
-                    session["data"]["plano"] = "PARTICULAR"
-                    session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
-                    reply_action = "ASK_ORDER"
-                    reply_message = "Certo, Particular. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
-                elif "cassi" in msg_lower:
-                    session["data"]["plano"] = "CASSI"
-                    session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
-                    reply_action = "ASK_ORDER"
-                    reply_message = "Certo, CASSI. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
-                elif any(x in msg_lower for x in ["bm", "b m", "militar"]):
-                    session["data"]["plano"] = "BM"
-                    session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
-                    reply_action = "ASK_ORDER"
-                    reply_message = "Certo, BM. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
-                elif "clinmelo" in msg_lower or "clin melo" in msg_lower:
-                    session["data"]["plano"] = "CLINMELO"
-                    session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
-                    reply_action = "ASK_ORDER"
-                    reply_message = "Certo, CLINMELO. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
-                else:
-                    reply_message = "Aceitamos somente CASSI, BM, CLINMELO ou Particular (à vista/espécie)."
+                reply_message = "Aceitamos somente CASSI, BM, Clinmelo ou Particular (à vista)."
 
         elif current_status == "ORCAMENTO_PEDIR_PEDIDO":
             # Check for Media (Photo or Document)
@@ -320,17 +307,17 @@ class SessionManager:
                 # Save Order Info (mock)
                 session["data"]["pedido_recebido"] = True
                 reply_action = "ORDER_RECEIVED"
-                reply_message = "Recebemos o seu pedido médico! 📸✅\nNossas atendentes irão verificar e calcular o orçamento para você. Por favor, aguarde um momento."
+                reply_message = "Recebi o pedido! 📸✅\nVou ver o preço para você. Só um momento."
             
             # Check for Text Description
             elif len(message) > 5:
                  session["status"] = "AGUARDANDO_HUMANO"
                  session["data"]["pedido_descricao"] = message
                  reply_action = "ORDER_RECEIVED"
-                 reply_message = "Certo, anotamos os exames: " + message + "\nNossas atendentes irão gerar o orçamento. Aguarde um momento. ⏳"
+                 reply_message = "Anotei aqui: " + message + "\nVou calcular o orçamento. Aguarde um pouquinho. ⏳"
             
             else:
-                 reply_message = "Por favor, envie a **foto do pedido** ou digite os nomes dos exames para prosseguirmos. 📸"
+                 reply_message = "Mande a *foto do pedido* ou escreva os exames, por favor. 📸"
 
 
 
@@ -360,35 +347,38 @@ class SessionManager:
                 valid_plan = True
             
             if valid_plan:
+                PLAN_NAMES = { "CASSI": "CASSI", "BM": "Polícia Militar (BM)", "CLINMELO": "Clinmelo", "PARTICULAR": "Particular" }
+                friendly_plan = PLAN_NAMES.get(chosen_plan, chosen_plan)
+
                 session["data"]["plano"] = chosen_plan
                 session["status"] = "AGENDAMENTO_PEDIR_DADOS"
                 reply_action = "ASK_ADDR"
-                reply_message = f"Certo, plano **{chosen_plan}**. Agora, por favor digite seu **Endereço Completo** para verificarmos a rota. 🚐"
+                reply_message = f"Certo, plano *{friendly_plan}*. Agora, qual o seu *Endereço* para a gente ver a rota? 🚐"
             else:
-                 reply_message = "Não entendi o plano. Para Agendamento, aceitamos somente: CASSI, BM, CLINMELO ou Particular."
+                 reply_message = "Não entendi qual é o plano. Aceitamos somente: CASSI, BM, Clinmelo ou Particular."
 
         elif current_status == "RESULTADO_PEDIR_COMPROVANTE":
              # 1. Accept valid Media
              if media_type in ["image", "document"]:
                  session["status"] = "AGUARDANDO_HUMANO"
                  reply_action = "PROOF_RECEIVED"
-                 reply_message = "Recebido! 📸\nVou verificar com a equipe se seu exame já está pronto e liberado. 📄✅\nAguarde um instante."
+                 reply_message = "Recebido! 📸\nVou verificar se já ficou pronto. Um momento. 📄✅"
              
              # 2. Accept textual confirmation (Escape Valve)
              elif any(k in message.lower() for k in ["já enviei", "ja mandei", "enviei", "segue", "ta ai", "está aí", "anexo"]):
                  session["status"] = "AGUARDANDO_HUMANO"
                  reply_action = "PROOF_RECEIVED"
-                 reply_message = "Certo, entendi que você já enviou. 👍\nVou pedir para a equipe verificar. Aguarde um instante."
+                 reply_message = "Ah, tudo bem. Vou pedir para as meninas verificarem. Só um instante."
 
              # 3. Reject unrelated text/audio
              else:
-                 reply_message = "Não consegui identificar o comprovante. 😕\nPor favor, envie a **FOTO** 📸 ou **PDF** do comprovante de pagamento/atendimento para liberarmos o resultado."
+                 reply_message = "Preciso que você mande a *foto do comprovante* 📸 para eu achar o exame."
 
         elif current_status == "AGENDAMENTO_PEDIR_DADOS":
             session["data"]["address"] = message
             session["status"] = "AGUARDANDO_HUMANO"
             reply_action = "HANDOFF"
-            reply_message = "Obrigado! Recebemos seus dados. Entraremos em contato para confirmar o horário da coleta. 🚐"
+            reply_message = "Obrigado! Recebi o endereço.\nVamos entrar em contato para confirmar o horário. 🚐"
 
         elif current_status == "AGUARDANDO_HUMANO":
             # Silence mode: If human is talking, bot expects human to reply.
