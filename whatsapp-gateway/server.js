@@ -26,8 +26,8 @@ async function connectToWhatsApp() {
         logger: logger,
         // printQRInTerminal: true, // DEPRECATED
         auth: state,
-        // Otimização para mensagens de texto (ignora histórico pesado inicial)
-        syncFullHistory: false
+        // Otimização removida para garantir chaves de criptografia completas (LID/Self)
+        syncFullHistory: true
     });
 
     sock.ev.on('connection.update', (update) => {
