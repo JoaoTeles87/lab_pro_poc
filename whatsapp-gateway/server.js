@@ -113,18 +113,21 @@ async function connectToWhatsApp() {
                 }
 
                 // Tenta resolver o JID real (Evita IDs @lid)
+                // IMPROVED MAPPING LOGIC
                 let effectiveJid = msg.key.remoteJid;
 
                 if (lidMap.has(msg.key.remoteJid)) {
                     effectiveJid = lidMap.get(msg.key.remoteJid);
-                } else if (effectiveJid.includes('@lid') && msg.key.participant && msg.key.participant.includes('@s.whatsapp.net')) {
-                    effectiveJid = msg.key.participant;
                 }
+
+                // Fallback removed as requested. 
+                // If effectiveJid remains an LID and map is empty, it might fail if session keys are missing.
 
                 // Tenta recuperar o NOME DA LISTA DE CONTATOS
                 const contactName = nameMap.get(effectiveJid) || nameMap.get(msg.key.remoteJid);
 
-                console.log(`🔑 Key Debug: Remote=${msg.key.remoteJid}, Name=${contactName || 'N/A'} => Usando: ${effectiveJid} [Type: ${mediaType}]`);
+                console.log(`� Diagnóstico LID: MapSize=${lidMap.size} | MsgKey=${JSON.stringify(msg.key)}`);
+                console.log(`�🔑 Key Debug: Remote=${msg.key.remoteJid} => Resolvido: ${effectiveJid}`);
 
                 const payload = {
                     remoteJid: effectiveJid,
