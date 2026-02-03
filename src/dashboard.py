@@ -26,14 +26,18 @@ if not st.session_state.auth:
     st.text_input("Senha de Acesso", type="password", key="password_input", on_change=check_password)
     st.stop() # Stop execution if not authenticated
 
+# --- CONFIG ---
+REFRESH_RATE = 2 # seconds
+
 # --- DATA LOADER ---
 def load_data():
     return database.get_all_sessions()
 
 def clear_data():
-    # Only for testing/admin. In production, maybe we shouldn't allow clearing ALL.
-    # Implementation optional for SQLite. Let's skip or implement individual delete later.
-    st.warning("Limpeza global desativada em Produção (SQLite). Use a roletagem automática.")
+    database.clear_all_sessions()
+    st.toast("Histórico limpo! 🧹", icon="✅")
+    time.sleep(1)
+    st.rerun()
 
 st.title("📊 Painel de Controle - Lab Pró-Análise")
 st.markdown("Monitoramento em tempo real (SQLite).")

@@ -6,7 +6,7 @@ from src.core import database
 
 SESSION_FILE = os.path.join("data", "sessions.json")
 MOCK_DB_FILE = os.path.join("data", "mock_db.json")
-SESSION_TIMEOUT = 86400 # 24 hours for Production Context
+SESSION_TIMEOUT = 300 # 5 minutes (Testing Mode)
 
 class SessionManager:
     def __init__(self):

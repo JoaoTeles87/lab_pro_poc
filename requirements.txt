@@ -6,7 +6,7 @@ unidecode
 python-dotenv
 streamlit
 watchdog
-# Audio Processing (Heavy - remove if strictly only using Hibernation Mode)
-openai-whisper
+# Audio Processing (Heavy - Removed for OCI Micro VPS)
+# openai-whisper
 # Database
 # sqlite3 is built-in to Python, no install needed.

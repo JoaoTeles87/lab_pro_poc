@@ -105,3 +105,11 @@ def prune_old_sessions(days_retention: int = 30):
         conn.close()
     except Exception as e:
         print(f"[DB] Error pruning sessions: {e}")
+
+def clear_all_sessions():
+    """⚠️ DANGER: Deletes ALL sessions. For testing only."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM sessions")
+    conn.commit()
+    conn.close()

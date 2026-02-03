@@ -10,7 +10,9 @@ sudo apt update && sudo apt upgrade -y
 
 # 2. Install Python 3 & Node.js
 echo "📦 Instalando dependências (Python, Node, FFmpeg)..."
-sudo apt install -y python3-pip python3-venv ffmpeg nodejs npm
+# Ubuntu/Debian often separate venv module. Installing it explicitly prevents ensurepip package errors.
+# 'npm' is usually bundled with 'nodejs' from NodeSource, so we don't install it separately to avoid conflicts.
+sudo apt install -y python3-pip python3-venv ffmpeg nodejs
 
 # 3. Install PM2 (Process Manager)
 echo "⚙️ Instalando PM2..."
@@ -18,13 +20,14 @@ sudo npm install -g pm2
 
 # 4. Setup Python Backend
 echo "🐍 Configurando Backend Python..."
-# Ensure venv is fresh
 rm -rf .venv
 python3 -m venv .venv
-# Use full path to venv pip to avoid path issues
-./.venv/bin/pip install uv
-./.venv/bin/uv sync 2>/dev/null || ./.venv/bin/pip install -r requirements.txt
-./.venv/bin/pip install fastapi uvicorn requests unidecode python-dotenv openai-whisper
+source .venv/bin/activate
+
+# Install dependencies inside venv
+pip install uv
+uv sync 2>/dev/null || pip install -r requirements.txt
+pip install fastapi uvicorn requests unidecode python-dotenv
 
 # 5. Setup Node Gateway
 echo "🌐 Configurando Gateway..."
