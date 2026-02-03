@@ -172,7 +172,8 @@ class SessionManager:
             "ID_PARTICULAR": "Particular"
         }
         
-             if saved_name: session["data"]["name"] = saved_name
+        
+        # LOGIC
  
         # LOGIC
         # 1. GLOBAL GRATITUDE HANDLER (Runs in ALL states)
