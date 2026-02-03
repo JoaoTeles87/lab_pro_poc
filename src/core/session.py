@@ -163,11 +163,11 @@ class SessionManager:
         # Helper for Friendly Plan Names
         PLAN_NAMES = {
             "CASSI": "CASSI",
-            "BM": "Polícia Militar (BM)",
+            "BM": "BM",
             "CLINMELO": "Clinmelo",
             "PARTICULAR": "Private", # Internal, mapped below
             "ID_CASSI": "CASSI",
-            "ID_BM": "Polícia Militar (BM)",
+            "ID_BM": "BM",
             "ID_CLINMELO": "Clinmelo",
             "ID_PARTICULAR": "Particular"
         }
@@ -380,7 +380,7 @@ class SessionManager:
                 valid_plan = True
             
             if valid_plan:
-                PLAN_NAMES = { "CASSI": "CASSI", "BM": "Polícia Militar (BM)", "CLINMELO": "Clinmelo", "PARTICULAR": "Particular" }
+                PLAN_NAMES = { "CASSI": "CASSI", "BM": "BM", "CLINMELO": "Clinmelo", "PARTICULAR": "Particular" }
                 friendly_plan = PLAN_NAMES.get(chosen_plan, chosen_plan)
 
                 session["data"]["plano"] = chosen_plan
