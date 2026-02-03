@@ -49,6 +49,9 @@ col_kpi, col_actions = st.columns([3, 1])
 with col_actions:
     if st.button("🔄 Atualizar"):
         st.rerun()
+    
+    if st.button("🗑️ Limpar Histórico"):
+        clear_data()
 
 # Auto-refresh using empty container hack
 placeholder = st.empty()
