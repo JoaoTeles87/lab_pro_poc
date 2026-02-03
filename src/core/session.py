@@ -176,9 +176,13 @@ class SessionManager:
         # LOGIC
  
         # LOGIC
+        # 0. STRICT FILTER: Ignore empty/whitespace messages (Double check)
+        if not message or not message.strip():
+            return None # Do nothing
+
         # 1. GLOBAL GRATITUDE HANDLER (Runs in ALL states)
         # If user says "obrigado", "valeu", etc., just reply politely and keep state.
-        gratitude_words = ["obrigado", "obg", "valeu", "grato", "agradecido", "joia", "beleza", "tá bem", "certo", "ok"]
+        gratitude_words = ["obrigado", "obrigada", "obg", "valeu", "grato", "grata", "agradecido", "agradecida", "joia", "beleza", "tá bem", "ta bem", "certo", "ok", "brigado", "brigada"]
         if any(x in normalize_text_simple(message) for x in gratitude_words) and len(message) < 20: 
              reply_action = "ACK"
              reply_message = "Disponha! Se precisar de algo, é só chamar. 😉"
@@ -199,7 +203,7 @@ class SessionManager:
                  reply_message = "Recebi seu áudio! \nVou transferir para um de nossos atendentes dar prosseguimento. \nAguarde que logo retornamos. ⏳"
             
             # Explicit Greeting Re-handling (to avoid "Sorry i didn't understand" for "Oi")
-            elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio"]):
+            elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio", "bom dia", "boa tarde", "boa noite", "tarde", "dia", "noite"]):
                  reply_action = "SEND_MENU"
                  name_display = session["data"].get("name", "Cliente")
                  reply_message = (f"Olá novamente, *{name_display}*! 👋\n"
