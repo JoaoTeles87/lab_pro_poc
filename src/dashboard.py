@@ -134,7 +134,9 @@ while True:
                             st.info("Dentro do prazo")
                         
                         if st.button("✅ Finalizar", key=f"btn_{phone}"):
-                            database.delete_session(phone) # Or reset to MENU
+                            # Move to 'Done' column instead of deleting
+                            data["status"] = "FINALIZADO"
+                            database.save_session(phone, data)
                             st.toast(f"Sessão {phone} finalizada!")
                             time.sleep(1)
                             st.rerun()
@@ -144,8 +146,12 @@ while True:
 
         with col_done:
             st.subheader("✅ Finalizados")
-            for phone, data in sessions.items():
-                if data.get("status") == "FINALIZADO":
-                    st.success(f"📞 {phone}")
+            finalized_count = sum(1 for s in sessions.values() if s.get("status") == "FINALIZADO")
+            
+            if finalized_count > 0:
+                st.metric("Atendimentos Concluídos", finalized_count)
+                st.caption("Pacientes que já tiveram atendimento encerrado.")
+            else:
+                st.info("Nenhum atendimento finalizado.")
 
     time.sleep(REFRESH_RATE)
