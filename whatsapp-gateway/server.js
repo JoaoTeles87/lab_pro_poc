@@ -17,7 +17,8 @@ app.use(bodyParser.json());
 let sock;
 
 async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+    // FORCE NEW SESSION - Avoids "Unsupported state" from corrupted old folder
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_v2');
 
 
     const logger = pino({ level: 'silent' });
@@ -26,8 +27,8 @@ async function connectToWhatsApp() {
         logger: logger,
         // printQRInTerminal: true, // DEPRECATED
         auth: state,
-        // Otimização removida para garantir chaves de criptografia completas (LID/Self)
-        syncFullHistory: true
+        // Otimização para mensagens de texto (ignora histórico pesado inicial)
+        syncFullHistory: false
     });
 
     sock.ev.on('connection.update', (update) => {
