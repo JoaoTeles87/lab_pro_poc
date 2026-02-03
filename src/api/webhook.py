@@ -126,6 +126,11 @@ async def whatsapp_webhook(payload: SimpleWhatsappPayload):
         contact_name=payload.contactName or payload.pushName, # Prefer Contact, then Push
         media_type=payload.mediaType
     )
+
+    if not session_result:
+        print("   [SESSION] Ignored (Empty/Filtered)")
+        return {"status": "ignored"}
+
     print(f"   [SESSION] State: {session_result['status']}")
     
     # 5. Auto-Reply
