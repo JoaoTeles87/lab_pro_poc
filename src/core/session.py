@@ -125,6 +125,11 @@ class SessionManager:
                           any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "menu", "inicio"]) or 
                           message.strip() in ["1", "2", "3", "4"])
         
+        if is_reset_input and current_status != "AGUARDANDO_HUMANO":
+             current_status = "MENU_PRINCIPAL"
+             # Clear data but preserve Name
+             saved_name = session["data"].get("name")
+             session["data"] = {}
              if saved_name: session["data"]["name"] = saved_name
         
         # ADMIN COMMAND (Human Override)
