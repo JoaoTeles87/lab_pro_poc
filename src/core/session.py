@@ -196,7 +196,7 @@ class SessionManager:
             if media_type == "audio":
                  session["status"] = "AGUARDANDO_HUMANO"
                  reply_action = "HANDOFF_AUDIO"
-                 reply_message = "Recebi seu áudio! \nVou transferir para um de nossos atendentes dar prosseguimento. Aguarde um momento. ⏳"
+                 reply_message = "Recebi seu áudio! \nVou transferir para um de nossos atendentes dar prosseguimento. \nAguarde que logo retornamos. ⏳"
             
             # Explicit Greeting Re-handling (to avoid "Sorry i didn't understand" for "Oi")
             elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio"]):
