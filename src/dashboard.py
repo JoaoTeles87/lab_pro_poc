@@ -27,7 +27,7 @@ if not st.session_state.auth:
     st.stop() # Stop execution if not authenticated
 
 # --- CONFIG ---
-REFRESH_RATE = 2 # seconds
+REFRESH_RATE = 10 # seconds (Updated to prevent flickering)
 
 # --- DATA LOADER ---
 def load_data():
