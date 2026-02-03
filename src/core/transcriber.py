@@ -1,12 +1,15 @@
-import whisper
+try:
+    import whisper
+except ImportError:
+    whisper = None
+
 import os
 
 # Global model loading to avoid overhead per request
 # User suggested 'base' model for Portuguese/Latam context efficiency
 MODEL_SIZE = "small"
-MODEL_SIZE = "small"
 # [HIBERNATION MODE]
-# model = whisper.load_model(MODEL_SIZE)
+# model = whisper.load_model(MODEL_SIZE) if whisper else None
 model = None # Disable for OCI Micro
 
 class Transcriber:
