@@ -179,8 +179,11 @@ app.post('/send-message', async (req, res) => {
         console.log(`📤 Respondido para ${number}`);
         res.json({ status: 'sent' });
     } catch (error) {
-        console.error("FATAL SEND ERROR:", error);
-        res.status(500).json({ error: 'Falha ao enviar', details: error.message || error.toString() });
+        console.error("❌ FATAL SEND ERROR DETAILS:", error);
+        console.log("❌ ERROR STACK:", error.stack);
+        // Ensure failure is visible
+        const safeDetails = error instanceof Error ? error.message : String(error);
+        res.status(500).json({ error: 'Falha ao enviar', details: safeDetails });
     }
 });
 
