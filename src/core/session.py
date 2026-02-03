@@ -139,6 +139,16 @@ class SessionManager:
                  reply_action = "HANDOFF_AUDIO"
                  reply_message = "Recebi seu áudio! 🎧\nComo áudios podem conter detalhes importantes, transferi para nossa equipe ouvir com atenção. Aguarde um momento. ⏳"
             
+            # Explicit Greeting Re-handling (to avoid "Sorry i didn't understand" for "Oi")
+            elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio"]):
+                 reply_action = "SEND_MENU"
+                 name_display = session["data"].get("name", "Cliente")
+                 reply_message = (f"Olá novamente, *{name_display}*! 👋\n"
+                                  "1. Solicitação de orçamentos 💰\n"
+                                  "2. Solicitação de resultados 🧪\n"
+                                  "3. Agendamento domiciliar 📆\n"
+                                  "4. Toxicologico")
+            
             # Smart Inference: If user mentions a Plan directly (e.g. "Bradesco"), assume ORCAMENTO
             elif entities.get("PLANO_SAUDE"):
                 plan = entities["PLANO_SAUDE"]
