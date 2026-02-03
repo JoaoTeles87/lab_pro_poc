@@ -138,7 +138,7 @@ async function connectToWhatsApp() {
                 // Tenta recuperar o NOME DA LISTA DE CONTATOS
                 const contactName = nameMap.get(effectiveJid) || nameMap.get(msg.key.remoteJid);
 
-                console.log(` Diagnóstico LID: MapSize=${lidMap.size} | MsgKey=${JSON.stringify(msg.key)}`);
+                console.log(`🔍 Diagnóstico LID: MapSize=${lidMap.size}`);
                 console.log(`🔑 Key Debug: Remote=${msg.key.remoteJid} => Resolvido: ${effectiveJid}`);
 
                 const payload = {
@@ -172,8 +172,8 @@ async function connectToWhatsApp() {
 
 // ROTA PARA SEU BACKEND ENVIAR MENSAGENS (Substitui a API do Evolution)
 app.post('/send-message', async (req, res) => {
-    console.log("📥 Recebido pedido de envio:", req.body);
-    const { number, text } = req.body; // Adapte conforme o JSON que seu Python envia
+    const { number, text } = req.body;
+    console.log(`📥 Recebido pedido de envio para: ${number}`);
 
     if (!sock) {
         console.error("❌ Erro: Sock não inicializado");
