@@ -48,116 +48,115 @@ async function connectToWhatsApp() {
         }
     });
 
-});
-}
-const lidMap = new Map();
-const nameMap = new Map();
 
-sock.ev.on('contacts.upsert', (contacts) => {
-    for (const contact of contacts) {
-        // Mapear LID -> JID
-        if (contact.lid && contact.id) {
-            lidMap.set(contact.lid, contact.id);
+    const lidMap = new Map();
+    const nameMap = new Map();
+
+    sock.ev.on('contacts.upsert', (contacts) => {
+        for (const contact of contacts) {
+            // Mapear LID -> JID
+            if (contact.lid && contact.id) {
+                lidMap.set(contact.lid, contact.id);
+            }
+            // Mapear JID/LID -> Nome (notify ou name)
+            const bestName = contact.name || contact.notify;
+            if (bestName) {
+                if (contact.id) nameMap.set(contact.id, bestName);
+                if (contact.lid) nameMap.set(contact.lid, bestName);
+            }
         }
-        // Mapear JID/LID -> Nome (notify ou name)
-        const bestName = contact.name || contact.notify;
-        if (bestName) {
-            if (contact.id) nameMap.set(contact.id, bestName);
-            if (contact.lid) nameMap.set(contact.lid, bestName);
-        }
-    }
-});
+    });
 
-sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', saveCreds);
 
-// ESCUTA MENSAGENS E MANDA PRO SEU BACKEND (PYTHON)
-sock.ev.on('messages.upsert', async m => {
-    try {
-        const msg = m.messages[0];
-        if (!msg.key.fromMe && m.type === 'notify') {
+    // ESCUTA MENSAGENS E MANDA PRO SEU BACKEND (PYTHON)
+    sock.ev.on('messages.upsert', async m => {
+        try {
+            const msg = m.messages[0];
+            if (!msg.key.fromMe && m.type === 'notify') {
 
-            let text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || "";
-            let audioBase64 = null;
+                let text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || "";
+                let audioBase64 = null;
 
-            // Handle Audio
-            if (msg.message?.audioMessage) {
+                // Handle Audio
+                if (msg.message?.audioMessage) {
+                    try {
+                        console.log("🎤 Audio detectado. Baixando...");
+                        const buffer = await downloadMediaMessage(
+                            msg,
+                            'buffer',
+                            {},
+                            {
+                                logger: logger,
+                                reuploadRequest: sock.updateMediaMessage
+                            }
+                        );
+                        audioBase64 = buffer.toString('base64');
+                        console.log("🎤 Audio baixado e convertido.");
+                    } catch (dErr) {
+                        console.error("❌ Falha ao baixar audio:", dErr);
+                    }
+                }
+
+                // Detect Media Type
+                const isImage = !!msg.message?.imageMessage;
+                const isDocument = !!msg.message?.documentMessage;
+                const isAudio = !!audioBase64;
+
+                let mediaType = 'text';
+                if (isAudio) mediaType = 'audio';
+                else if (isImage) mediaType = 'image';
+                else if (isDocument) mediaType = 'document';
+
+                // Allow processing if text exists OR if it's a known media type
+                if (!text && mediaType === 'text') {
+                    return;
+                }
+
+                // Tenta resolver o JID real (Evita IDs @lid)
+                // IMPROVED MAPPING LOGIC
+                let effectiveJid = msg.key.remoteJid; // Default to remoteJid
+
+                if (msg.key.remoteJidAlt) {
+                    effectiveJid = msg.key.remoteJidAlt;
+                } else if (lidMap.has(msg.key.remoteJid)) {
+                    effectiveJid = lidMap.get(msg.key.remoteJid);
+                } else if (msg.key.remoteJid.includes('@lid') && msg.key.participant && msg.key.participant.includes('@s.whatsapp.net')) {
+                    effectiveJid = msg.key.participant;
+                }
+
+                // Tenta recuperar o NOME DA LISTA DE CONTATOS
+                const contactName = nameMap.get(effectiveJid) || nameMap.get(msg.key.remoteJid);
+
+                console.log(` Diagnóstico LID: MapSize=${lidMap.size} | MsgKey=${JSON.stringify(msg.key)}`);
+                console.log(`🔑 Key Debug: Remote=${msg.key.remoteJid} => Resolvido: ${effectiveJid}`);
+
+                const payload = {
+                    remoteJid: effectiveJid,
+                    contactName: contactName,
+                    pushName: msg.pushName,
+                    text: text,
+                    audio: audioBase64,
+                    mediaType: mediaType,
+                    timestamp: msg.messageTimestamp,
+                    originalMessage: msg
+                };
+
+                // FIX: payload.text might be empty if audio only
+                let display = text ? text.substring(0, 50) : '[Audio Message]';
+                console.log(`📩 Enviando para LangGraph: ${display}`);
+
                 try {
-                    console.log("🎤 Audio detectado. Baixando...");
-                    const buffer = await downloadMediaMessage(
-                        msg,
-                        'buffer',
-                        {},
-                        {
-                            logger: logger,
-                            reuploadRequest: sock.updateMediaMessage
-                        }
-                    );
-                    audioBase64 = buffer.toString('base64');
-                    console.log("🎤 Audio baixado e convertido.");
-                } catch (dErr) {
-                    console.error("❌ Falha ao baixar audio:", dErr);
+                    // Posta no seu backend Python
+                    await axios.post(BACKEND_WEBHOOK_URL, payload);
+                } catch (err) {
+                    console.error(`❌ Erro ao contatar backend Python: ${err.message}`);
                 }
             }
-
-            // Detect Media Type
-            const isImage = !!msg.message?.imageMessage;
-            const isDocument = !!msg.message?.documentMessage;
-            const isAudio = !!audioBase64;
-
-            let mediaType = 'text';
-            if (isAudio) mediaType = 'audio';
-            else if (isImage) mediaType = 'image';
-            else if (isDocument) mediaType = 'document';
-
-            // Allow processing if text exists OR if it's a known media type
-            if (!text && mediaType === 'text') {
-                return;
-            }
-
-            // Tenta resolver o JID real (Evita IDs @lid)
-            // IMPROVED MAPPING LOGIC
-            let effectiveJid = msg.key.remoteJid; // Default to remoteJid
-
-            if (msg.key.remoteJidAlt) {
-                effectiveJid = msg.key.remoteJidAlt;
-            } else if (lidMap.has(msg.key.remoteJid)) {
-                effectiveJid = lidMap.get(msg.key.remoteJid);
-            } else if (msg.key.remoteJid.includes('@lid') && msg.key.participant && msg.key.participant.includes('@s.whatsapp.net')) {
-                effectiveJid = msg.key.participant;
-            }
-
-            // Tenta recuperar o NOME DA LISTA DE CONTATOS
-            const contactName = nameMap.get(effectiveJid) || nameMap.get(msg.key.remoteJid);
-
-            console.log(` Diagnóstico LID: MapSize=${lidMap.size} | MsgKey=${JSON.stringify(msg.key)}`);
-            console.log(`🔑 Key Debug: Remote=${msg.key.remoteJid} => Resolvido: ${effectiveJid}`);
-
-            const payload = {
-                remoteJid: effectiveJid,
-                contactName: contactName,
-                pushName: msg.pushName,
-                text: text,
-                audio: audioBase64,
-                mediaType: mediaType,
-                timestamp: msg.messageTimestamp,
-                originalMessage: msg
-            };
-
-            // FIX: payload.text might be empty if audio only
-            let display = text ? text.substring(0, 50) : '[Audio Message]';
-            console.log(`📩 Enviando para LangGraph: ${display}`);
-
-            try {
-                // Posta no seu backend Python
-                await axios.post(BACKEND_WEBHOOK_URL, payload);
-            } catch (err) {
-                console.error(`❌ Erro ao contatar backend Python: ${err.message}`);
-            }
+        } catch (error) {
+            console.error("Error processing message:", error);
         }
-    } catch (error) {
-        console.error("Error processing message:", error);
-    }
-});
+    });
 }
 
 // ROTA PARA SEU BACKEND ENVIAR MENSAGENS (Substitui a API do Evolution)
