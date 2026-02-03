@@ -118,8 +118,10 @@ async function connectToWhatsApp() {
                 else if (isImage) mediaType = 'image';
                 else if (isDocument) mediaType = 'document';
 
-                // Allow processing if text exists OR if it's a known media type
+                // STRICT FILTER: Ignore Status Updates / Polls / Empty Events
+                // If text is empty AND it is not a recognized media, SKIP.
                 if (!text && mediaType === 'text') {
+                    console.log(`⚠️ Ignorando evento vazio (Status/Poll): ${msg.key.remoteJid}`);
                     return;
                 }
 
