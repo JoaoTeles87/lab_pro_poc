@@ -156,14 +156,19 @@ async function connectToWhatsApp() {
 
 // ROTA PARA SEU BACKEND ENVIAR MENSAGENS (Substitui a API do Evolution)
 app.post('/send-message', async (req, res) => {
+    console.log("📥 Recebido pedido de envio:", req.body);
     const { number, text } = req.body; // Adapte conforme o JSON que seu Python envia
 
-    if (!sock) return res.status(500).json({ error: 'WhatsApp não conectado' });
+    if (!sock) {
+        console.error("❌ Erro: Sock não inicializado");
+        return res.status(500).json({ error: 'WhatsApp não conectado' });
+    }
 
     try {
         // Formata número se necessário (ex: garante o sufixo @s.whatsapp.net)
         // number comes usually as "5581..." without suffix from Replier
         const jid = number.includes('@') ? number : `${number}@s.whatsapp.net`;
+        console.log(`🚀 Tentando enviar para: ${jid}`);
 
         await sock.sendMessage(jid, { text: text });
         console.log(`📤 Respondido para ${number}`);

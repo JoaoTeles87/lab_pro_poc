@@ -23,8 +23,11 @@ class Replier:
         }
         
         try:
-            requests.post(url, json=payload)
-            print(f"[REPLIER] Sent to {remote_jid}: {text}")
+            response = requests.post(url, json=payload)
+            if response.status_code == 200:
+                print(f"[REPLIER] Sent to {remote_jid}: {text}")
+            else:
+                print(f"[REPLIER] Gateway Error {response.status_code}: {response.text}")
         except Exception as e:
             print(f"[REPLIER] Error sending: {e}")
         
