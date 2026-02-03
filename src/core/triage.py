@@ -10,11 +10,10 @@ ONTOLOGY = {
     },
     "entities": {
         "PLANO_SAUDE": {
-            "ID_UNIMED": ["unimed", "uni med", "unimeid", "unimed recife"],
-            "ID_BRADESCO": ["bradesco", "bradesco saude", "bradesco seguro", "bradoesco", "bardesco", "bra underground"],
-            "ID_PARTICULAR": ["dinheiro", "pix", "sem plano", "a vista", "nao tenho plano", "cartao"], #MUDAR PARA PAGAMENTO EM ESPÉCIE SEM PLANO, POIS PARTICULAR GERA CERTA AMBIGUIDADE
-            "ID_SASSEPE": ["sassepe", "sassep", "sasepe"],
-            "ID_GEAP": ["geap", "jeap", "geape"]
+            "ID_CASSI": ["cassi", "casi", "caci"],
+            "ID_BM": ["bm", "b m", "b.m", "policia militar", "militar"],
+            "ID_CLINMELO": ["clinmelo", "clin melo", "climelo", "climelo"],
+            "ID_PARTICULAR": ["dinheiro", "pix", "sem plano", "a vista", "nao tenho plano", "cartao", "particular", "especie"]
         }
     }
 }

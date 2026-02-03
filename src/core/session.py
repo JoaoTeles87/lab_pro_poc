@@ -163,7 +163,7 @@ class SessionManager:
             elif intent == "ORCAMENTO":
                 session["status"] = "ORCAMENTO_PEDIR_PLANO"
                 reply_action = "ASK_PLAN"
-                reply_message = "Certo, Orçamentos. 💰\nVocê possui plano de saúde ou pagamento **à vista/sem plano**?\n(Ex: Unimed, Bradesco, Sem plano)"
+                reply_message = "Certo, Orçamentos. 💰\nVocê possui plano de saúde ou pagamento **à vista/sem plano**?\n(Ex: CASSI, BM, CLINMELO, Particular)"
             
             elif intent == "RESULTADO":
                 session["status"] = "RESULTADO_PEDIR_COMPROVANTE"
@@ -256,18 +256,28 @@ class SessionManager:
             else:
                 # Try simple key word extraction from message if entity failed
                 msg_lower = message.lower()
-                if "particular" in msg_lower:
+                if any(x in msg_lower for x in ["particular", "dinheiro", "pix", "vista"]):
                     session["data"]["plano"] = "PARTICULAR"
                     session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
                     reply_action = "ASK_ORDER"
                     reply_message = "Certo, Particular. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
-                elif "unimed" in msg_lower:
-                    session["data"]["plano"] = "UNIMED"
+                elif "cassi" in msg_lower:
+                    session["data"]["plano"] = "CASSI"
                     session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
                     reply_action = "ASK_ORDER"
-                    reply_message = "Certo, Unimed. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
+                    reply_message = "Certo, CASSI. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
+                elif any(x in msg_lower for x in ["bm", "b m", "militar"]):
+                    session["data"]["plano"] = "BM"
+                    session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
+                    reply_action = "ASK_ORDER"
+                    reply_message = "Certo, BM. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
+                elif "clinmelo" in msg_lower or "clin melo" in msg_lower:
+                    session["data"]["plano"] = "CLINMELO"
+                    session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
+                    reply_action = "ASK_ORDER"
+                    reply_message = "Certo, CLINMELO. Por favor envie uma **foto do pedido médico** 📸 ou digite os exames."
                 else:
-                    reply_message = "Não entendi qual é o plano. Aceitamos Unimed, Bradesco, Sassepe, Geap ou Particular."
+                    reply_message = "Não entendi qual é o plano. Aceitamos somente CASSI, BM, CLINMELO ou Particular (à vista/espécie)."
 
         elif current_status == "ORCAMENTO_PEDIR_PEDIDO":
             # Check for Media (Photo or Document)
