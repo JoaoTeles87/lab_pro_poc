@@ -89,7 +89,25 @@ async function connectToWhatsApp() {
                 return;
             }
 
+            // IGNORE SYSTEM MESSAGES (Encryption change, Group Add, Revoke, etc)
+            if (msg.messageStubType) {
+                console.log(`⚠️ Ignorando System Message (Stub): ${msg.messageStubType}`);
+                return;
+            }
+
             if (!msg.key.fromMe && m.type === 'notify') {
+
+                // DETECT MESSAGE TYPE (Allowlist Strategy)
+                const messageContent = msg.message;
+                const allowedTypes = ['conversation', 'extendedTextMessage', 'imageMessage', 'documentMessage', 'audioMessage'];
+
+                // Find which type matches
+                const msgType = Object.keys(messageContent).find(key => allowedTypes.includes(key));
+
+                if (!msgType) {
+                    console.log(`⚠️ Ignorando tipo de mensagem desconhecido/sistema: ${Object.keys(messageContent).join(', ')}`);
+                    return;
+                }
 
                 let text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || "";
                 let audioBase64 = null;
