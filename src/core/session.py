@@ -369,7 +369,7 @@ class SessionManager:
                 session["data"]["plano"] = chosen_plan
                 session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
                 reply_action = "ASK_ORDER"
-                reply_message = f"Certo, plano *{friendly_plan}*. Agora, tire uma *foto do pedido médico* 📸 e mande aqui."
+                reply_message = f"Certo, plano *{friendly_plan}*. Agora, tire uma *foto do pedido médico* 📸 ou digite os exames e mande aqui."
             else:
                 reply_message = "Aceitamos somente CASSI, BM, Clinmelo ou Particular (à vista)."
 
