@@ -3,10 +3,10 @@ from unidecode import unidecode
 
 ONTOLOGY = {
     "intents": {
-        "ORCAMENTO": ["preco", "valor", "quanto custa", "orcamento", "tabela", "1", "um"],
-        "RESULTADO": ["resultado", "laudo", "ja saiu", "exame pronto", "protocolo", "2", "dois"],
-        "AGENDAMENTO": ["marcar", "agendar", "domiciliar", "coleta", "3", "tres"],
-        "TOXICOLOGICO": ["toxicologico", "4", "quatro"]
+        "ORCAMENTO": ["preco", "valor", "quanto custa", "orcamento", "tabela", "1"],
+        "RESULTADO": ["resultado", "laudo", "ja saiu", "exame pronto", "protocolo", "2"],
+        "AGENDAMENTO": ["marcar", "agendar", "domiciliar", "coleta", "3"],
+        "TOXICOLOGICO": ["toxicologico", "4"]
     },
     "entities": {
         "PLANO_SAUDE": {
@@ -54,13 +54,16 @@ class Triage:
         """
         Detects the intent of the message based on keywords.
         Returns the first matching intent key or None.
+        Uses Regex Word Boundaries (\b) to avoid partial matches (e.g., 'um' inside 'nenhum').
         """
         normalized_text = normalize_text(text)
         
         for intent, keywords in self.ontology["intents"].items():
             for keyword in keywords:
-                # Simple containment check for now
-                if normalize_text(keyword) in normalized_text:
+                # Use WORD BOUNDARY regex
+                # Escape keyword just in case it has regex chars, though normalize removes them.
+                pattern = rf"\b{re.escape(normalize_text(keyword))}\b"
+                if re.search(pattern, normalized_text):
                     return intent
         return None
 

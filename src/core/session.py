@@ -67,21 +67,26 @@ class SessionManager:
         if intent == "GREETING" or session["interaction_count"] == 0:
             session["interaction_count"] += 1
 
-        # --- NAME REGISTRATION Logic ---
-        # 1. If we don't have a name yet
-        if not session["data"].get("name"):
-            # 2. Try to use contact_name if valid (not just a phone number)
-            # Simple heuristic: if contact_name has letters and is not None
-            if contact_name and any(c.isalpha() for c in contact_name):
-                 session["data"]["name"] = contact_name
-                 # Continue to Menu...
-            
-            # 3. If still no name, and we are not in 'CADASTRO' state, INTERRUPT FLOW
-            elif session["status"] != "CADASTRO_PEDIR_NOME":
-                 session["status"] = "CADASTRO_PEDIR_NOME"
-                 # Save session and return immediately
-                 # We need to handle the Reply at the end, so we set a flag or handle logic below
+        # --- NAME REGISTRATION Logic (REMOVED AGGRESSIVE INTERRUPT) ---
+        # We now only ask for name if the user GREETS us or explicitly enters the flow.
+        # Logic moved to MENU_PRINCIPAL block.
         
+        # --- FILTER INVALID MESSAGES ---
+        # 0. STRICT FILTER: Ignore empty/whitespace messages or emoji-only/symbol-only if no intent
+        if not intent and media_type == "text":
+             # Normalize heavily to see if there are actual letters/numbers
+             clean_text = normalize_text_simple(message)
+             clean_text = ''.join(c for c in clean_text if c.isalnum()) # Keep only alnum
+             
+             if len(clean_text) < 2:
+                 # Check if it was a critical digit like '1', '2' (Intents would usually catch this, but just in case)
+                 if message.strip() in ["1", "2", "3", "4"]:
+                     pass # Allow
+                 else:
+                     print(f"   [SESSION] Ignoring invalid/empty message: {message}")
+                     return None
+
+
         # --- TIMEOUT CHECK ---
         # If last update was > SESSION_TIMEOUT, auto-reset to MENU
         now = time.time()
@@ -204,13 +209,19 @@ class SessionManager:
             
             # Explicit Greeting Re-handling (to avoid "Sorry i didn't understand" for "Oi")
             elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio", "bom dia", "boa tarde", "boa noite", "tarde", "dia", "noite"]):
-                 reply_action = "SEND_MENU"
-                 name_display = session["data"].get("name", "Cliente")
-                 reply_message = (f"Olá novamente, *{name_display}*! 👋\n"
-                                  "1. Solicitação de orçamentos 💰\n"
-                                  "2. Solicitação de resultados 🧪\n"
-                                  "3. Agendamento domiciliar 📆\n"
-                                  "4. Toxicológico")
+                 # CHECK NAME FIRST
+                 current_name = session["data"].get("name")
+                 if not current_name:
+                      session["status"] = "CADASTRO_PEDIR_NOME"
+                      reply_action = "ASK_NAME"
+                      reply_message = "Olá! Tudo bem? Antes de prosseguir, qual é o seu nome?"
+                 else:
+                      reply_action = "SEND_MENU"
+                      reply_message = (f"Olá novamente, *{current_name}*! 👋\n"
+                                   "1. Solicitação de orçamentos 💰\n"
+                                   "2. Solicitação de resultados 🧪\n"
+                                   "3. Agendamento domiciliar 📆\n"
+                                   "4. Toxicológico")
             
             # Smart Inference: If user mentions a Plan directly (e.g. "Bradesco"), assume ORCAMENTO
             elif entities.get("PLANO_SAUDE"):
@@ -282,18 +293,47 @@ class SessionManager:
             # Capture Name
             clean_name = message.strip()
             
-            # Sanity Check: If message is too long (> 50 chars), it's likely a question/audio, not a name.
-            if len(clean_name) > 50:
-                 # Don't set name to "Cliente", leave it empty so it can be updated by contact sync later.
-                 session["status"] = "AGUARDANDO_HUMANO"
-                 reply_action = "HANDOFF_LONG_REG"
-                 reply_message = "Recebi sua mensagem! 🎧\nComo não entendi seu nome, encaminhei direto para nossa equipe humana. Aguarde um momento. 😉"
-            
+            # ESCAPE VALVE: If user ignores the question and sends a long sentence or question
+            # We assume it's NOT a name, but a request.
+            # Criteria: > 4 words OR > 25 chars OR contains "?"
+            if len(clean_name.split()) > 4 or len(clean_name) > 25 or "?" in clean_name:
+                 session["data"]["name"] = "Cliente" # Default
+                 session["status"] = "MENU_PRINCIPAL" # Restore state
+                 
+                 # PROCESS THE MESSAGE AGAIN (Recursive call? Or simple fallthrough?)
+                 # Simple Fallthrough is hard because we are in an elif block. 
+                 # We will return a special "REPROCESS" action or just handle the reply manually.
+                 
+                 # Let's try to handle it by simulating the Menu Logic here for this turn.
+                 # Actually, the best way is to set name and return "I didn't understand, here is the menu" 
+                 # OR try to detect intent now.
+                 
+                 # Let's detect intent here:
+                 if intent in ["ORCAMENTO", "RESULTADO", "AGENDAMENTO", "TOXICOLOGICO"]:
+                      # If valid intent found, acknowledge and delegate in next turn? 
+                      # No, let's reply with the menu to be safe, but acknowledged.
+                      reply_action = "SEND_MENU"
+                      reply_message = (f"Olá! Tudo bem? ✅\n"
+                                         "Em que posso ajudar hoje? 😄\n\n"
+                                         "1. Orçamentos 💰\n"
+                                         "2. Resultados de exames 🧪\n"
+                                         "3. Agendamento Domiciliar 📆\n"
+                                         "4. Toxicológico (CNH)")
+                 else:
+                     # General Menu
+                     reply_action = "SEND_MENU"
+                     reply_message = (f"Olá! Tudo bem? ✅\n"
+                                      "Em que posso ajudar hoje? 😄\n\n"
+                                      "1. Orçamentos 💰\n"
+                                      "2. Resultados de exames 🧪\n"
+                                      "3. Agendamento Domiciliar 📆\n"
+                                      "4. Toxicológico (CNH)")
+
             elif len(clean_name) > 2:
-                session["data"]["name"] = clean_name
+                session["data"]["name"] = clean_name.title()
                 session["status"] = "MENU_PRINCIPAL"
                 reply_action = "WELCOME"
-                reply_message = (f"Obrigado, *{clean_name}*! Prazer em te conhecer. ✨\n\n"
+                reply_message = (f"Obrigado, *{clean_name.title()}*! Prazer em te conhecer. ✨\n\n"
                                  "Como posso te ajudar?\n\n"
                                      "1. Orçamentos 💰\n"
                                      "2. Resultados de exames 🧪\n"
@@ -443,4 +483,7 @@ def normalize_text_simple(text):
     import re
     from unidecode import unidecode
     if not text: return ""
-    return unidecode(text).lower()
+    text = unidecode(text).lower()
+    # Remove URLs
+    text = re.sub(r"https?://\S+|www\.\S+", "", text)
+    return text

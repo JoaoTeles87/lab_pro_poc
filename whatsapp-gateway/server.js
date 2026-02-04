@@ -83,6 +83,12 @@ async function connectToWhatsApp() {
                 return;
             }
 
+            // IGNORE STATUS UPDATES (Broadcasts)
+            if (msg.key.remoteJid === 'status@broadcast') {
+                console.log(`⚠️ Ignorando Status Update de: ${msg.key.participant}`);
+                return;
+            }
+
             if (!msg.key.fromMe && m.type === 'notify') {
 
                 let text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || "";

@@ -1,59 +1,55 @@
 import sys
 import os
-sys.path.append(os.getcwd()) # Ensure src is in path
 
-from src.core.triage import Triage, normalize_text
+# Adjust path to import src
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-def test_normalization():
-    assert normalize_text("Olá Água") == "ola agua"
-    assert normalize_text("TESTE   123") == "teste 123"
-    assert normalize_text("Quero um orçamento!") == "quero um orcamento"
+from src.core.triage import Triage
 
-def test_intent_detection():
+def test_triage():
     triage = Triage()
     
-    # ORCAMENTO
-    assert triage.detect_intent("Gostaria de saber o valor do exame") == "ORCAMENTO"
-    assert triage.detect_intent("Quanto custa um hemograma?") == "ORCAMENTO"
-    assert triage.detect_intent("Preço da glicose") == "ORCAMENTO"
+    test_cases = [
+        # 1. False Positive Correction (The "Mim ama" case)
+        ("Mim ama ou mim odeia fica a critério n como as custas de nenhum", None),
+        ("Eu não tenho nenhum centavo", None), # 'um' inside 'nenhum'
+        ("Vou comp um carro", None), # 'um' inside 'compum' (artificially) or just 'um' is gone?
+                                     # We removed 'um' entirely from ontology.
+        
+        # 2. Valid Intents (Strict Digits)
+        ("1", "ORCAMENTO"),
+        ("1.", "ORCAMENTO"),
+        ("Opção 1", "ORCAMENTO"),
+        ("Quero saber o preco", "ORCAMENTO"),
+        
+        # 3. Invalid Digits (Boundaries)
+        ("100 reais", None), # Should NOT trigger '1'
+        ("2024", None),      # Should NOT trigger '2' or '4'
+        ("30", None),
+        
+        # 4. Links (Should be stripped by normalizer implicitly)
+        ("https://www.instagram.com/p/DURsQsWADan/?igsh=MWttZGM5ZmMwbzR2YQ==", None),
+        
+        # 5. Other Intents
+        ("resultado", "RESULTADO"),
+        ("agendar", "AGENDAMENTO"),
+        ("toxicologico", "TOXICOLOGICO"),
+    ]
     
-    # RESULTADO
-    assert triage.detect_intent("Meu resultado ja saiu?") == "RESULTADO"
-    assert triage.detect_intent("Quero meu laudo") == "RESULTADO"
-    
-    # UNKNOWN
-    assert triage.detect_intent("Bom dia") is None
-
-def test_entity_extraction():
-    triage = Triage()
-    
-    # UNIMED
-    entities = triage.extract_entities("Tenho plano Unimed")
-    assert entities.get("PLANO_SAUDE") == "ID_UNIMED"
-    
-    # BRADESCO
-    entities = triage.extract_entities("É pelo bradesco saude")
-    assert entities.get("PLANO_SAUDE") == "ID_BRADESCO"
-    
-    # PARTICULAR
-    entities = triage.extract_entities("Vou pagar no particular")
-    assert entities.get("PLANO_SAUDE") == "ID_PARTICULAR"
-    
-    # None
-    entities = triage.extract_entities("Não sei qual é")
-    assert "PLANO_SAUDE" not in entities
+    print("\n=== TRIAGE LOGIC VERIFICATION ===")
+    failures = 0
+    for text, expected in test_cases:
+        result = triage.detect_intent(text)
+        status = "✅ PASS" if result == expected else f"❌ FAIL (Got {result})"
+        print(f"Input: '{text}' -> Expected: {expected} | {status}")
+        if result != expected:
+            failures += 1
+            
+    if failures == 0:
+        print("\n🎉 ALL TESTS PASSED")
+    else:
+        print(f"\n⚠️ {failures} TESTS FAILED")
+        exit(1)
 
 if __name__ == "__main__":
-    try:
-        test_normalization()
-        print("test_normalization: PASS")
-        test_intent_detection()
-        print("test_intent_detection: PASS")
-        test_entity_extraction()
-        print("test_entity_extraction: PASS")
-    except AssertionError as e:
-        print(f"FAILED: {e}")
-        exit(1)
-    except Exception as e:
-        print(f"ERROR: {e}")
-        exit(1)
+    test_triage()

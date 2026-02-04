@@ -131,7 +131,7 @@ async def whatsapp_webhook(payload: SimpleWhatsappPayload):
         print("   [SESSION] Ignored (Empty/Filtered)")
         return {"status": "ignored"}
 
-    print(f"   [SESSION] State: {session_result['status']}")
+    print(f"   [SESSION] State: {session_result.get('status', 'unknown')}")
     
     # 5. Auto-Reply
     reply_msg = session_result.get("reply_message")
@@ -286,7 +286,12 @@ async def evolution_webhook(request: Request):
             intent=intent,
             entities=entities
         )
-        print(f"   [SESSION] State: {session_result['status']}")
+        
+        if not session_result:
+             print("   [SESSION] Ignored (Empty/Filtered)")
+             return {"status": "ignored"}
+
+        print(f"   [SESSION] State: {session_result.get('status', 'unknown')}")
         
         # 5. Auto-Reply
         reply_msg = session_result.get("reply_message")
