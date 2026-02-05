@@ -249,8 +249,8 @@ class SessionManager:
                 
             elif intent == "TOXICOLOGICO":
                 reply_action = "INFO_TOXIC"
-                reply_message = "O exame Toxicológico 🚦 é por ordem de chegada.\nAtendimento *somente Particular* (R$ 150,00) ou *Pagamento à vista*.\nNecessário CNH."
-                session["status"] = "MENU_PRINCIPAL" # Return to menu
+                reply_message = "O exame Toxicológico 🚦 é realizado por agendamento.\nAtendimento *somente Particular* (R$ 150,00) ou *Pagamento à vista*.\nNecessário CNH. \nDeseja realizar?"
+                session["status"] = "TOXICOLOGICO_AGUARDANDO_RESPOSTA"
             
             # elif any(x in normalize_text_simple(message) for x in ["ok", "ta bem", "tá bem", "certo", "obrigado", "obg", "valeu", "entendi", "joia", "beleza"]):
             #    # Handle simple acknowledgments without sending the full menu
@@ -452,6 +452,31 @@ class SessionManager:
             session["status"] = "AGUARDANDO_HUMANO"
             reply_action = "HANDOFF"
             reply_message = "Obrigado! Recebi o endereço.\nVamos entrar em contato para confirmar o horário. 🚐"
+
+        elif current_status == "TOXICOLOGICO_AGUARDANDO_RESPOSTA":
+            msg_lower = normalize_text_simple(message)
+            # 1. Positive
+            if any(x in msg_lower for x in ["sim", "quero", "pode ser", "s", "ok", "agendar", "fazer"]):
+                 session["status"] = "TOXICOLOGICO_PEDIR_CNH"
+                 reply_action = "ASK_CNH"
+                 reply_message = "Perfeito. Para agendar, preciso da *foto da sua CNH* (Carteira de Motorista) ou dos dados da sua CNH. 📸"
+            
+            # 2. Negative / Gratitude
+            elif any(x in msg_lower for x in ["nao", "não", "obrigado", "obg", "valeu", "deixa", "cancelar"]):
+                 session["status"] = "MENU_PRINCIPAL"
+                 reply_action = "ACK_CANCEL"
+                 reply_message = "Sem problemas! Se mudar de ideia, é só chamar. 😉"
+            
+            else:
+                 reply_message = "Desculpe, não entendi. Deseja realizar o exame Toxicológico? (Responda Sim ou Não)"
+
+        elif current_status == "TOXICOLOGICO_PEDIR_CNH":
+             if media_type in ["image", "document"]:
+                 session["status"] = "AGUARDANDO_HUMANO"
+                 reply_action = "CNH_RECEIVED"
+                 reply_message = "Recebi sua CNH! 📸✅\nVamos verificar a disponibilidade e entrar em contato. Aguarde. ⏳"
+             else:
+                  reply_message = "Por favor, envie a *foto da CNH* para prosseguirmos. 📸"
 
         elif current_status == "AGUARDANDO_HUMANO":
             # Silence mode: If human is talking, bot expects human to reply.
