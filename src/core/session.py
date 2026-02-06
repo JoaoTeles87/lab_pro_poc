@@ -190,7 +190,7 @@ class SessionManager:
         gratitude_words = ["obrigado", "obrigada", "obg", "valeu", "grato", "grata", "agradecido", "agradecida", "joia", "beleza", "tá bem", "ta bem", "certo", "ok", "brigado", "brigada"]
         if any(x in normalize_text_simple(message) for x in gratitude_words) and len(message) < 20: 
              reply_action = "ACK"
-             reply_message = "Disponha! Se precisar de algo, é só chamar. 😉"
+             reply_message = "Disponha! Se precisar de algo, é só chamar. 😉 É sempre um prazer lhe atender."
              # Return IMMEDIATELY to prevent state transition
              return {
                 "status": current_status,
