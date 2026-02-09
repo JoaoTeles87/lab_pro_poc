@@ -221,7 +221,9 @@ class SessionManager:
                                    "1. Solicitação de orçamentos 💰\n"
                                    "2. Solicitação de resultados 🧪\n"
                                    "3. Agendamento domiciliar 📆\n"
-                                   "4. Toxicológico")
+                                   "4. Toxicológico (CNH)\n"
+                                   "5. Outras dúvidas\n"
+                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
             
             # Smart Inference: If user mentions a Plan directly (e.g. "Bradesco"), assume ORCAMENTO
             elif entities.get("PLANO_SAUDE"):
@@ -331,7 +333,7 @@ class SessionManager:
                                       "3. Agendamento Domiciliar 📆\n"
                                       "4. Toxicológico (CNH)\n"
                                       "5. Outras dúvidas\n"
-                                    "• Pedimos que siga as instruções e aguarde nosso atendimento")
+                                    "• Pedimos que siga as instruções e aguarde nosso atendimento!")
 
             elif len(clean_name) > 2:
                 session["data"]["name"] = clean_name.title()
