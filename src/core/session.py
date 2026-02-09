@@ -318,7 +318,9 @@ class SessionManager:
                                          "1. Orçamentos 💰\n"
                                          "2. Resultados de exames 🧪\n"
                                          "3. Agendamento Domiciliar 📆\n"
-                                         "4. Toxicológico (CNH)")
+                                         "4. Toxicológico (CNH)\n"
+                                         "5. Outras dúvidas\n"
+                                         "• Pedimos que siga as instruções e aguarde nosso atendimento")
                  else:
                      # General Menu
                      reply_action = "SEND_MENU"
@@ -327,7 +329,9 @@ class SessionManager:
                                       "1. Orçamentos 💰\n"
                                       "2. Resultados de exames 🧪\n"
                                       "3. Agendamento Domiciliar 📆\n"
-                                      "4. Toxicológico (CNH)")
+                                      "4. Toxicológico (CNH)\n"
+                                      "5. Outras dúvidas\n"
+                                    "• Pedimos que siga as instruções e aguarde nosso atendimento")
 
             elif len(clean_name) > 2:
                 session["data"]["name"] = clean_name.title()
