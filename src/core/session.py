@@ -344,7 +344,9 @@ class SessionManager:
                                      "1. Orçamentos 💰\n"
                                      "2. Resultados de exames 🧪\n"
                                      "3. Agendamento Domiciliar 📆\n"
-                                     "4. Toxicológico")
+                                     "4. Toxicológico(CNH)\n"
+                                   "5. Outras dúvidas\n"
+                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
             else:
                 reply_message = "Nome muito curto. Por favor, digite seu nome completo."
 
@@ -393,7 +395,7 @@ class SessionManager:
                  session["status"] = "AGUARDANDO_HUMANO"
                  session["data"]["pedido_descricao"] = message
                  reply_action = "ORDER_RECEIVED"
-                 reply_message = "Anotei aqui: " + message + "\nVou calcular o orçamento. Aguarde um pouquinho. ⏳"
+                 reply_message = "Anotei aqui: " + message + "\nVou calcular o orçamento. Aguarde que logo entraremos em contato. ⏳"
             
             else:
                  reply_message = "Mande a *foto do pedido* ou escreva os exames, por favor. 📸"
