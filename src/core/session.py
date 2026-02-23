@@ -3,6 +3,7 @@ import os
 import time
 from datetime import datetime
 from src.core import database
+from src.config import IGNORED_NUMBERS, TEST_PREFIX
 
 SESSION_FILE = os.path.join("data", "sessions.json")
 MOCK_DB_FILE = os.path.join("data", "mock_db.json")
@@ -61,6 +62,21 @@ class SessionManager:
         return None
 
     def update_session(self, phone: str, message: str, intent: str, entities: dict, contact_name: str = None, media_type: str = "text"):
+        # --- IGNORED NUMBERS / TEST MODE ---
+        is_ignored = phone in IGNORED_NUMBERS
+        is_test_mode = message.startswith(TEST_PREFIX)
+
+        if is_ignored:
+            if is_test_mode:
+                # Strip prefix and proceed
+                message = message[len(TEST_PREFIX):].strip()
+                if not message:
+                    message = "oi" # Default to greeting
+                print(f"   [SESSION] Ignored number {phone} in TEST MODE. Proceeding with message: {message}")
+            else:
+                print(f"   [SESSION] Ignoring message from ignored number: {phone}")
+                return None
+
         session = self.get_session(phone)
         
         # Increment Interaction Count (new conversations)
@@ -158,7 +174,9 @@ class SessionManager:
                               "1. Orçamentos 💰\n"
                               "2. Resultados 🧪\n"
                               "3. Agendamento 📆\n"
-                              "4. Toxicológico")
+                              "4. Toxicológico(CNH)\n"
+                                   "5. Outras dúvidas\n"
+                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
              
              # Reset session data but keep name
              saved_name = session["data"].get("name")
@@ -278,7 +296,9 @@ class SessionManager:
                                         "1. Orçamentos\n"
                                         "2. Resultados\n"
                                         "3. Agendamento\n"
-                                        "4. Toxicológico")
+                                        "4. Toxicológico (CNH)\n"
+                                   "5. Outras dúvidas\n"
+                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
                 else:
                     # Default Menu (Long Version)
                     reply_action = "SEND_MENU"
@@ -289,7 +309,9 @@ class SessionManager:
                                         "1. Orçamentos 💰\n"
                                         "2. Resultados de exames 🧪\n"
                                         "3. Agendamento Domiciliar 📆\n"
-                                        "4. Toxicológico (CNH)")
+                                        "4. Toxicológico (CNH)\n"
+                                   "5. Outras dúvidas\n"
+                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
 
         elif current_status == "CADASTRO_PEDIR_NOME":
             # Capture Name
