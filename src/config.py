@@ -12,7 +12,7 @@ WEBHOOK_HOST = os.getenv("WEBHOOK_HOST", "host.docker.internal")
 WEBHOOK_URL = f"http://{WEBHOOK_HOST}:{PORT}/webhook/evolution"
 
 # Security / Filtering
-raw_ignored = os.getenv("IGNORED_NUMBERS", "5587999497007")
+raw_ignored = os.getenv("IGNORED_NUMBERS", "558799497007")
 IGNORED_NUMBERS = [n.strip() for n in raw_ignored.split(",") if n.strip()]
 
 TEST_PREFIX = "#teste"
