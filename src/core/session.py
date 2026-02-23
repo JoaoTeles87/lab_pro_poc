@@ -456,7 +456,7 @@ class SessionManager:
                 session["data"]["plano"] = chosen_plan
                 session["status"] = "AGENDAMENTO_PEDIR_DADOS"
                 reply_action = "ASK_ADDR"
-                reply_message = f"Certo, plano *{friendly_plan}*. Agora, qual o seu *Endereço* para a gente ver a rota? 🚐"
+                reply_message = f"Certo, plano *{friendly_plan}*. Agora, qual o seu *Endereço* para a gente ver a rota e agendar o melhor dia para irmos até a residência. 🚐 \nLogo retornaremos!"
             else:
                  reply_message = "Não entendi qual é o plano. Aceitamos somente: CASSI, BM, Clinmelo ou Particular."
 
