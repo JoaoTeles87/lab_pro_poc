@@ -110,15 +110,8 @@ class SessionManager:
         
         if last_ts > 0 and (now - last_ts) > SESSION_TIMEOUT:
              print(f"[SESSION] Timeout detected for {phone}. Resetting to MENU.")
-             # Preserve name before clearing data
-             saved_name = session["data"].get("name")
-             
              session["status"] = "MENU_PRINCIPAL"
              session["data"] = {}
-             
-             if saved_name: 
-                 session["data"]["name"] = saved_name
-             
              session["interaction_count"] += 1 # New interaction flow
 
 
@@ -143,9 +136,7 @@ class SessionManager:
         if current_status == "FINALIZADO":
             current_status = "MENU_PRINCIPAL"
             # Optional: Clear old data? Likely yes, to start fresh.
-            saved_name = session["data"].get("name")
             session["data"] = {}
-            if saved_name: session["data"]["name"] = saved_name
             # Don't reset history, let it append.
         
         # RESET logic (if user says "oi", "ola", "menu" intentionally)
@@ -159,10 +150,8 @@ class SessionManager:
         
         if is_reset_input and current_status != "AGUARDANDO_HUMANO":
              current_status = "MENU_PRINCIPAL"
-             # Clear data but preserve Name
-             saved_name = session["data"].get("name")
+             # Clear data
              session["data"] = {}
-             if saved_name: session["data"]["name"] = saved_name
         
         # ADMIN COMMAND (Human Override)
         # Allows the human attendant to type "#bot" or "#reset" to return control to AI
@@ -226,22 +215,16 @@ class SessionManager:
                  reply_message = "Recebi seu áudio! \nVou transferir para um de nossos atendentes dar prosseguimento. \nAguarde que logo retornamos. ⏳"
             
             # Explicit Greeting Re-handling (to avoid "Sorry i didn't understand" for "Oi")
+            # Explicit Greeting Re-handling
             elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio", "bom dia", "boa tarde", "boa noite", "tarde", "dia", "noite"]):
-                 # CHECK NAME FIRST
-                 current_name = session["data"].get("name")
-                 if not current_name:
-                      session["status"] = "CADASTRO_PEDIR_NOME"
-                      reply_action = "ASK_NAME"
-                      reply_message = "Olá! Tudo bem? Antes de prosseguir, qual é o seu nome?"
-                 else:
-                      reply_action = "SEND_MENU"
-                      reply_message = (f"Olá novamente, *{current_name}*! 👋\n"
-                                   "1. Solicitação de orçamentos 💰\n"
-                                   "2. Solicitação de resultados 🧪\n"
-                                   "3. Agendamento domiciliar 📆\n"
-                                   "4. Toxicológico (CNH)\n"
-                                   "5. Outras dúvidas\n"
-                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
+                  reply_action = "SEND_MENU"
+                  reply_message = ("Olá! Tudo bem? ✅\n\n"
+                               "1. Solicitação de orçamentos 💰\n"
+                               "2. Solicitação de resultados 🧪\n"
+                               "3. Agendamento domiciliar 📆\n"
+                               "4. Toxicológico (CNH)\n"
+                               "5. Outras dúvidas\n"
+                               "• Pedimos que siga as instruções e aguarde nosso atendimento")
             
             # Smart Inference: If user mentions a Plan directly (e.g. "Bradesco"), assume ORCAMENTO
             elif entities.get("PLANO_SAUDE"):
@@ -302,9 +285,7 @@ class SessionManager:
                 else:
                     # Default Menu (Long Version)
                     reply_action = "SEND_MENU"
-                    # Safe Access to Name
-                    name_display = session["data"].get("name", "Cliente")
-                    reply_message = (f"Olá, *{name_display}*! Tudo bem? ✅\n\n"
+                    reply_message = ("Olá! Tudo bem? ✅\n\n"
                                         "Em que posso ajudar hoje? 😄\n\n"
                                         "1. Orçamentos 💰\n"
                                         "2. Resultados de exames 🧪\n"
@@ -313,64 +294,6 @@ class SessionManager:
                                    "5. Outras dúvidas\n"
                                    "• Pedimos que siga as instruções e aguarde nosso atendimento")
 
-        elif current_status == "CADASTRO_PEDIR_NOME":
-            # Capture Name
-            clean_name = message.strip()
-            
-            # ESCAPE VALVE: If user ignores the question and sends a long sentence or question
-            # We assume it's NOT a name, but a request.
-            # Criteria: > 4 words OR > 25 chars OR contains "?"
-            if len(clean_name.split()) > 4 or len(clean_name) > 25 or "?" in clean_name:
-                 session["data"]["name"] = "Cliente" # Default
-                 session["status"] = "MENU_PRINCIPAL" # Restore state
-                 
-                 # PROCESS THE MESSAGE AGAIN (Recursive call? Or simple fallthrough?)
-                 # Simple Fallthrough is hard because we are in an elif block. 
-                 # We will return a special "REPROCESS" action or just handle the reply manually.
-                 
-                 # Let's try to handle it by simulating the Menu Logic here for this turn.
-                 # Actually, the best way is to set name and return "I didn't understand, here is the menu" 
-                 # OR try to detect intent now.
-                 
-                 # Let's detect intent here:
-                 if intent in ["ORCAMENTO", "RESULTADO", "AGENDAMENTO", "TOXICOLOGICO"]:
-                      # If valid intent found, acknowledge and delegate in next turn? 
-                      # No, let's reply with the menu to be safe, but acknowledged.
-                      reply_action = "SEND_MENU"
-                      reply_message = (f"Olá! Tudo bem? ✅\n"
-                                         "Em que posso ajudar hoje? 😄\n\n"
-                                         "1. Orçamentos 💰\n"
-                                         "2. Resultados de exames 🧪\n"
-                                         "3. Agendamento Domiciliar 📆\n"
-                                         "4. Toxicológico (CNH)\n"
-                                         "5. Outras dúvidas\n"
-                                         "• Pedimos que siga as instruções e aguarde nosso atendimento")
-                 else:
-                     # General Menu
-                     reply_action = "SEND_MENU"
-                     reply_message = (f"Olá! Tudo bem? ✅\n"
-                                      "Em que posso ajudar hoje? 😄\n\n"
-                                      "1. Orçamentos 💰\n"
-                                      "2. Resultados de exames 🧪\n"
-                                      "3. Agendamento Domiciliar 📆\n"
-                                      "4. Toxicológico (CNH)\n"
-                                      "5. Outras dúvidas\n"
-                                    "• Pedimos que siga as instruções e aguarde nosso atendimento!")
-
-            elif len(clean_name) > 2:
-                session["data"]["name"] = clean_name.title()
-                session["status"] = "MENU_PRINCIPAL"
-                reply_action = "WELCOME"
-                reply_message = (f"Obrigado, *{clean_name.title()}*! Prazer em te conhecer. ✨\n\n"
-                                 "Como posso te ajudar?\n\n"
-                                     "1. Orçamentos 💰\n"
-                                     "2. Resultados de exames 🧪\n"
-                                     "3. Agendamento Domiciliar 📆\n"
-                                     "4. Toxicológico(CNH)\n"
-                                   "5. Outras dúvidas\n"
-                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
-            else:
-                reply_message = "Nome muito curto. Por favor, digite seu nome completo."
 
         elif current_status == "ORCAMENTO_PEDIR_PLANO":
             # Capture Plan (Regex/Keyword Logic)
@@ -519,12 +442,6 @@ class SessionManager:
                  # SILENCE
                  reply_message = None 
 
-        session["last_updated"] = time.time()
-        session["last_action"] = reply_action
-        
-        session["last_updated"] = time.time()
-        session["last_action"] = reply_action
-        
         # Persist to SQLite
         database.save_session(phone, session)
         
