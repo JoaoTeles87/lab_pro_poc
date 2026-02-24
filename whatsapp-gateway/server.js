@@ -7,28 +7,42 @@ const cors = require('cors');
 const qrcode = require('qrcode-terminal');
 
 // CONFIGURAÇÕES
-const PORT = 3000; // Porta deste Gateway
-const BACKEND_WEBHOOK_URL = 'http://127.0.0.1:8000/webhook'; // URL do seu Backend Python (LangGraph)
+const PORT = process.env.PORT || 3000;
+const BACKEND_WEBHOOK_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8000/webhook';
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+let isReconnecting = false;
 let sock;
 
 async function connectToWhatsApp() {
-    // FORCE NEW SESSION - Avoids "Unsupported state" from corrupted old folder
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_v2');
+    if (isReconnecting) return;
+    isReconnecting = true;
 
+    console.log('🔄 Iniciando conexão com WhatsApp...');
 
+    // CLOSE OLD SOCKET IF EXISTS
+    if (sock && sock.ws) {
+        try {
+            sock.ev.removeAllListeners();
+            sock.ws.close();
+        } catch (e) {
+            console.error("Erro ao fechar socket antigo:", e.message);
+        }
+    }
+
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_v3');
     const logger = pino({ level: 'silent' });
 
     sock = makeWASocket({
         logger: logger,
-        // printQRInTerminal: true, // DEPRECATED
         auth: state,
-        // Necessário para chaves de criptografia (Self/LID)
-        syncFullHistory: false // CRITICAL: Disabled to prevent spamming old chats
+        syncFullHistory: false,
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 30000
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -40,16 +54,37 @@ async function connectToWhatsApp() {
         }
 
         if (connection === 'close') {
-            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Connection closed. Reconnecting in 5s:', shouldReconnect);
+            const statusCode = lastDisconnect.error?.output?.statusCode;
+            const errorMsg = lastDisconnect.error?.message || "";
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+            console.log(`❌ Conexão fechada. Status: ${statusCode}. Erro: ${errorMsg}`);
+
+            // FATAL ERROR CHECK: Bad MAC usually means corrupted session
+            if (errorMsg.includes('Bad MAC') || errorMsg.includes('encryption')) {
+                console.error('🛑 ERRO FATAL: Sessão corrompida (Bad MAC).');
+                console.error('👉 AÇÃO NECESSÁRIA: Apague a pasta auth_info_v2 na VPS e reinicie o gateway.');
+                isReconnecting = false;
+                process.exit(1); // Exit to let PM2 restart or stop for manual fix
+            }
+
             if (shouldReconnect) {
-                // Exponential backoff or simple delay to prevent memory-heavy rapid loops
-                setTimeout(() => connectToWhatsApp(), 5000);
+                console.log('⏳ Tentando reconectar em 10s...');
+                setTimeout(() => {
+                    isReconnecting = false;
+                    connectToWhatsApp();
+                }, 10000);
+            } else {
+                console.log('🚪 Deslogado. Não irá reconectar automaticamente.');
+                isReconnecting = false;
             }
         } else if (connection === 'open') {
             console.log('✅ Gateway WhatsApp Conectado e Pronto!');
+            isReconnecting = false;
         }
     });
+
+    sock.ev.on('creds.update', saveCreds);
 
 
     const lidMap = new Map();
@@ -167,8 +202,7 @@ async function connectToWhatsApp() {
                 // Tenta recuperar o NOME DA LISTA DE CONTATOS
                 const contactName = nameMap.get(effectiveJid) || nameMap.get(msg.key.remoteJid);
 
-                console.log(`🔍 Diagnóstico LID: MapSize=${lidMap.size}`);
-                console.log(`🔑 Key Debug: Remote=${msg.key.remoteJid} => Resolvido: ${effectiveJid}`);
+                console.log(`🔑 Key Debug: Remote=${msg.key.remoteJid} => Resolvido: ${effectiveJid} (LID Map: ${lidMap.size})`);
 
                 const payload = {
                     remoteJid: effectiveJid,
