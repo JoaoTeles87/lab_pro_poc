@@ -11,7 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "@whiskeysockets/baileys": "^6.7.0",
     "axios": "^1.13.3",
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",

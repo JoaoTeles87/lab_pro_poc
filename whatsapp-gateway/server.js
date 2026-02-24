@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage, Browsers } = require('@whiskeysockets/baileys');
 const express = require('express');
 const bodyParser = require('body-parser');
 const pino = require('pino');
@@ -43,7 +43,7 @@ async function connectToWhatsApp() {
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
-        browser: ['Ubuntu', 'Chrome', '20.0.04']
+        browser: Browsers.ubuntu('Chrome')
     });
 
     sock.ev.on('connection.update', (update) => {
