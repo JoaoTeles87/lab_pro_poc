@@ -42,7 +42,8 @@ async function connectToWhatsApp() {
         syncFullHistory: false,
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
-        keepAliveIntervalMs: 30000
+        keepAliveIntervalMs: 30000,
+        browser: ['Ubuntu', 'Chrome', '20.0.04']
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -59,6 +60,11 @@ async function connectToWhatsApp() {
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
             console.log(`❌ Conexão fechada. Status: ${statusCode}. Erro: ${errorMsg}`);
+
+            // Detailed Trace for 405
+            if (statusCode === 405) {
+                console.error('🔍 Detalhes do Erro 405:', JSON.stringify(lastDisconnect.error, null, 2));
+            }
 
             // FATAL ERROR CHECK: Bad MAC usually means corrupted session
             if (errorMsg.includes('Bad MAC') || errorMsg.includes('encryption')) {
