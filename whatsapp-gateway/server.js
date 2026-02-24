@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage, Browsers } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage, Browsers, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const express = require('express');
 const bodyParser = require('body-parser');
 const pino = require('pino');
@@ -34,16 +34,18 @@ async function connectToWhatsApp() {
     }
 
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_v3');
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+    console.log(`🌐 Usando WhatsApp v${version.join('.')}, latest: ${isLatest}`);
+
     const logger = pino({ level: 'silent' });
 
     sock = makeWASocket({
+        version,
         logger: logger,
         auth: state,
         syncFullHistory: false,
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 60000,
-        keepAliveIntervalMs: 30000,
-        browser: Browsers.ubuntu('Chrome')
+        printQRInTerminal: false,
+        browser: Browsers.macOS('Desktop')
     });
 
     sock.ev.on('connection.update', (update) => {
