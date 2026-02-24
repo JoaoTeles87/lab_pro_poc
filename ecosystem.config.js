@@ -13,6 +13,8 @@ module.exports = {
             name: "lab-gateway",
             script: "server.js",
             cwd: "./whatsapp-gateway",
+            node_args: "--max-old-space-size=1024",
+            max_memory_restart: "800M",
             env: {
                 PORT: 3000,
                 BACKEND_URL: "http://127.0.0.1:8000/webhook"

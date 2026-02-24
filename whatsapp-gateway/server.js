@@ -41,8 +41,11 @@ async function connectToWhatsApp() {
 
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Connection closed. Reconnecting:', shouldReconnect);
-            if (shouldReconnect) connectToWhatsApp();
+            console.log('Connection closed. Reconnecting in 5s:', shouldReconnect);
+            if (shouldReconnect) {
+                // Exponential backoff or simple delay to prevent memory-heavy rapid loops
+                setTimeout(() => connectToWhatsApp(), 5000);
+            }
         } else if (connection === 'open') {
             console.log('✅ Gateway WhatsApp Conectado e Pronto!');
         }
