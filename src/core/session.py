@@ -7,7 +7,8 @@ from src.config import IGNORED_NUMBERS, TEST_PREFIX
 
 SESSION_FILE = os.path.join("data", "sessions.json")
 MOCK_DB_FILE = os.path.join("data", "mock_db.json")
-SESSION_TIMEOUT = 3600 # 1 hour
+SESSION_TIMEOUT = 900 # 15 minutes for automated flows
+HUMAN_SESSION_TIMEOUT = 86400 # 24 hours for human mode
 
 class SessionManager:
     def __init__(self):
@@ -104,13 +105,25 @@ class SessionManager:
 
 
         # --- TIMEOUT CHECK ---
-        # If last update was > SESSION_TIMEOUT, auto-reset to MENU
+        # Current State
+        current_status = session.get("status", "MENU_PRINCIPAL")
+
         now = time.time()
         last_ts = session.get("last_updated", 0)
         
-        if last_ts > 0 and (now - last_ts) > SESSION_TIMEOUT:
-             print(f"[SESSION] Timeout detected for {phone}. Resetting to MENU.")
-             session["status"] = "MENU_PRINCIPAL"
+        # 24 hours for human mode, 15 minutes for automated flows
+        timeout_limit = HUMAN_SESSION_TIMEOUT if current_status == "AGUARDANDO_HUMANO" else SESSION_TIMEOUT
+        
+        if last_ts > 0 and (now - last_ts) > timeout_limit:
+             if current_status == "AGUARDANDO_HUMANO":
+                 print(f"[SESSION] 24h Timeout detected for {phone}. Resetting to MENU.")
+                 session["status"] = "MENU_PRINCIPAL"
+                 current_status = "MENU_PRINCIPAL"
+             else:
+                 print(f"[SESSION] Inactivity > 15m detected for {phone}. Yielding to HUMAN.")
+                 session["status"] = "AGUARDANDO_HUMANO"
+                 current_status = "AGUARDANDO_HUMANO"
+                 
              session["data"] = {}
              session["interaction_count"] += 1 # New interaction flow
 
@@ -126,9 +139,6 @@ class SessionManager:
         
         reply_action = None
         reply_message = None
-        
-        # Current State
-        current_status = session.get("status", "MENU_PRINCIPAL")
 
         # RE-ENGAGEMENT LOGIC
         # If the session was previously finalized (archived), receiving a new message
@@ -158,19 +168,16 @@ class SessionManager:
         if message.strip().lower() in ["#bot", "#reset", "#voltar"]:
              current_status = "MENU_PRINCIPAL"
              reply_action = "SEND_MENU"
-             name_display = session["data"].get("name", "Cliente")
-             reply_message = (f"🤖 Controle retornado ao Robô.\nOlá novamente, *{name_display}*! 👋\n"
+             reply_message = ("🤖 Controle retornado ao Robô.\nOlá novamente! 👋\n"
                               "1. Orçamentos 💰\n"
                               "2. Resultados 🧪\n"
                               "3. Agendamento 📆\n"
                               "4. Toxicológico(CNH)\n"
-                                   "5. Outras dúvidas\n"
-                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
+                              "5. Outras dúvidas\n"
+                              "• Pedimos que siga as instruções e aguarde nosso atendimento")
              
-             # Reset session data but keep name
-             saved_name = session["data"].get("name")
+             # Reset session data
              session["data"] = {}
-             if saved_name: session["data"]["name"] = saved_name
 
         # Helper for Friendly Plan Names
         PLAN_NAMES = {
@@ -192,10 +199,10 @@ class SessionManager:
         if not message or not message.strip():
             return None # Do nothing
 
-        # 1. GLOBAL GRATITUDE HANDLER (Runs in ALL states)
+        # 1. GLOBAL GRATITUDE HANDLER (Runs in ALL states, except AGUARDANDO_HUMANO)
         # If user says "obrigado", "valeu", etc., just reply politely and keep state.
         gratitude_words = ["obrigado", "obrigada", "obg", "valeu", "grato", "grata", "agradecido", "agradecida", "joia", "beleza", "tá bem", "ta bem", "certo", "ok", "brigado", "brigada"]
-        if any(x in normalize_text_simple(message) for x in gratitude_words) and len(message) < 20: 
+        if current_status != "AGUARDANDO_HUMANO" and any(x in normalize_text_simple(message) for x in gratitude_words) and len(message) < 20: 
              reply_action = "ACK"
              reply_message = "Disponha! Se precisar de algo, é só chamar. 😉 É sempre um prazer lhe atender."
              # Return IMMEDIATELY to prevent state transition
