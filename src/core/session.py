@@ -21,11 +21,12 @@ class SessionManager:
         self.mock_db_path = MOCK_DB_FILE
         self._load_mock_db()
 
-    def get_session(self, phone: str) -> dict:
+    def get_session(self, client_id: str, phone: str) -> dict:
         """Loads session from DB or creates new."""
-        session = database.get_session(phone)
+        session = database.get_session(client_id, phone)
         if not session:
              session = {
+                "client_id": client_id,
                 "phone": phone,
                 "status": "MENU_PRINCIPAL",
                 "data": {},
@@ -43,9 +44,10 @@ class SessionManager:
         else:
             self.mock_db = {"patients": {}}
 
-    def check_results(self, protocol_or_cpf):
-        # Implement Logic to check Mock DB
-        patients = self.mock_db.get("patients", {})
+    def check_results(self, client_id: str, protocol_or_cpf: str):
+        # Implement Logic to check Mock DB within client scope
+        clinica_data = self.mock_db.get(client_id, {})
+        patients = clinica_data.get("patients", {})
         
         # Simple search
         if protocol_or_cpf in patients:
@@ -62,7 +64,7 @@ class SessionManager:
         
         return None
 
-    def update_session(self, phone: str, message: str, intent: str, entities: dict, contact_name: str = None, media_type: str = "text"):
+    def update_session(self, client_id: str, phone: str, message: str, intent: str, entities: dict, contact_name: str = None, media_type: str = "text", from_me: bool = False):
         # --- IGNORED NUMBERS / TEST MODE ---
         is_ignored = phone in IGNORED_NUMBERS
         is_test_mode = message.startswith(TEST_PREFIX)
@@ -78,7 +80,17 @@ class SessionManager:
                 print(f"   [SESSION] Ignoring message from ignored number: {phone}")
                 return None
 
-        session = self.get_session(phone)
+        session = self.get_session(client_id, phone)
+        
+        # --- HUMAN HANDOFF (fromMe) ---
+        # If message is from the attendant, mark as AGUARDANDO_HUMANO and renew timeout
+        if from_me:
+            print(f"   [SESSION] Detected message from attendant for {phone}. Setting AGUARDANDO_HUMANO.")
+            session["status"] = "AGUARDANDO_HUMANO"
+            session["last_updated"] = time.time()
+            database.save_session(client_id, phone, session)
+            # No reply needed as this was the reply
+            return None
         
         # Increment Interaction Count (new conversations)
         if intent == "GREETING" or session["interaction_count"] == 0:
@@ -126,6 +138,9 @@ class SessionManager:
                  
              session["data"] = {}
              session["interaction_count"] += 1 # New interaction flow
+
+        # Update last_updated for the current interaction
+        session["last_updated"] = now
 
 
         session["history"].append({
@@ -450,7 +465,7 @@ class SessionManager:
                  reply_message = None 
 
         # Persist to SQLite
-        database.save_session(phone, session)
+        database.save_session(client_id, phone, session)
         
         return {
             "status": session["status"],

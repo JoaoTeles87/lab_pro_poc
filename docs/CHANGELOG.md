@@ -1,5 +1,17 @@
 # Changelog - Lab Pró-Análise POC
 
+## [SaaS Multitenancy & Gateway Otimizações] - 2026-02-26
+
+### 🚀 Novas Funcionalidades
+- **Arquitetura Multiclínicas (SaaS)**: O backend e o gateway agora suportam múltiplas clínicas operando na mesma infraestrutura através da segregação por `client_id` (Chaves Compostas no SQLite).
+- **Dashboard Multitenant**: O painel de controle agora possui um seletor de clínicas na barra lateral para monitoramento isolado.
+
+### 🛠 System & Infrastructure
+- **Gateway SQLite Auth**: Substituído o armazenamento de credenciais em vários arquivos soltos (`auth_info`) por um banco único de alta performance (`whatsapp_auth.db`) usando `better-sqlite3`.
+- **Idle Disconnect**: O Gateway Node.js agora fecha o socket ativo do WhatsApp após 10 minutos de inatividade para poupar memória na VPS, reconectando automaticamente ("Sob Demanda") apenas quando novas mensagens chegam ou no envio reativo.
+- **Python Timeout Resilience**: O Backend agora está preparado com timeout de 20s para aguardar a reconexão automática do Gateway.
+- **Bot Echo Filter**: Implementado um cache em memória no Gateway (`botSentIds`) para ignorar as mensagens enviadas pela própria API, evitando o falso gatilho de *Human Handoff*.
+
 ## [Latest Refinements] - 2026-01-31
 
 ### 🧠 Logic & Flow Improvements

@@ -19,25 +19,48 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Simple Key-Value store logic, but inside SQL
-    # phone is the key, data is the full JSON blob
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS sessions (
-            phone TEXT PRIMARY KEY,
-            data TEXT NOT NULL,
-            updated_at REAL
-        )
-    ''')
+    # Check if table needs migration (adding client_id)
+    cursor.execute("PRAGMA table_info(sessions)")
+    columns = [row[1] for row in cursor.fetchall()]
+    
+    if "client_id" not in columns:
+        print("[DB] Migrating database to multitenant schema...")
+        # Backup old data if needed, but since it's a POC and schema changes PK, 
+        # it's safer to recreate or alter. Recreating is cleaner for POC.
+        cursor.execute("DROP TABLE IF EXISTS sessions_old")
+        cursor.execute("ALTER TABLE sessions RENAME TO sessions_old")
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sessions (
+                client_id TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                data TEXT NOT NULL,
+                updated_at REAL,
+                PRIMARY KEY (client_id, phone)
+            )
+        ''')
+        # We don't port data from sessions_old because we don't know the client_id for old sessions.
+        print("[DB] Migration complete. Old table renamed to sessions_old.")
+    else:
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sessions (
+                client_id TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                data TEXT NOT NULL,
+                updated_at REAL,
+                PRIMARY KEY (client_id, phone)
+            )
+        ''')
     
     conn.commit()
     conn.close()
 
-def get_session(phone: str) -> Optional[Dict]:
-    """Retrieves a session by phone number."""
+def get_session(client_id: str, phone: str) -> Optional[Dict]:
+    """Retrieves a session by client_id and phone number."""
     conn = get_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT data FROM sessions WHERE phone = ?", (phone,))
+    cursor.execute("SELECT data FROM sessions WHERE client_id = ? AND phone = ?", (client_id, phone))
     row = cursor.fetchone()
     conn.close()
     
@@ -48,24 +71,31 @@ def get_session(phone: str) -> Optional[Dict]:
             return None
     return None
 
-def get_all_sessions() -> Dict[str, Dict]:
-    """Retrieves all active sessions for the Dashboard."""
+def get_all_sessions(client_id: Optional[str] = None) -> Dict[str, Dict]:
+    """Retrieves all active sessions, optionally filtered by client_id."""
     conn = get_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT phone, data FROM sessions")
+    if client_id:
+        cursor.execute("SELECT client_id, phone, data FROM sessions WHERE client_id = ?", (client_id,))
+    else:
+        cursor.execute("SELECT client_id, phone, data FROM sessions")
+        
     rows = cursor.fetchall()
     conn.close()
     
     sessions = {}
     for row in rows:
         try:
-             sessions[row["phone"]] = json.loads(row["data"])
+             s_data = json.loads(row["data"])
+             s_data["client_id"] = row["client_id"] # Ensure it matches DB
+             s_data["phone"] = row["phone"]
+             sessions[row["phone"]] = s_data
         except:
              continue
     return sessions
 
-def save_session(phone: str, session_data: Dict):
+def save_session(client_id: str, phone: str, session_data: Dict):
     """Upserts a session."""
     conn = get_connection()
     cursor = conn.cursor()
@@ -74,12 +104,12 @@ def save_session(phone: str, session_data: Dict):
     now = time.time()
     
     cursor.execute('''
-        INSERT INTO sessions (phone, data, updated_at) 
-        VALUES (?, ?, ?)
-        ON CONFLICT(phone) DO UPDATE SET
+        INSERT INTO sessions (client_id, phone, data, updated_at) 
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(client_id, phone) DO UPDATE SET
             data = excluded.data,
             updated_at = excluded.updated_at
-    ''', (phone, json_data, now))
+    ''', (client_id, phone, json_data, now))
     
     conn.commit()
     conn.close()
@@ -106,18 +136,21 @@ def prune_old_sessions(days_retention: int = 30):
     except Exception as e:
         print(f"[DB] Error pruning sessions: {e}")
 
-def delete_session(phone: str):
-    """Deletes a specific session by phone number."""
+def delete_session(client_id: str, phone: str):
+    """Deletes a specific session by client_id and phone number."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM sessions WHERE phone = ?", (phone,))
+    cursor.execute("DELETE FROM sessions WHERE client_id = ? AND phone = ?", (client_id, phone))
     conn.commit()
     conn.close()
 
-def clear_all_sessions():
-    """⚠️ DANGER: Deletes ALL sessions. For testing only."""
+def clear_all_sessions(client_id: Optional[str] = None):
+    """⚠️ DANGER: Deletes sessions. If client_id is None, deletes ALL."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM sessions")
+    if client_id:
+        cursor.execute("DELETE FROM sessions WHERE client_id = ?", (client_id,))
+    else:
+        cursor.execute("DELETE FROM sessions")
     conn.commit()
     conn.close()

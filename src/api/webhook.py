@@ -63,27 +63,29 @@ class EvolutionPayload(BaseModel):
     destination: Optional[str] = None
 
 class SimpleWhatsappPayload(BaseModel):
+    clientId: str
     remoteJid: str
     contactName: Optional[str] = None
     pushName: Optional[str] = None
     text: str
     audio: Optional[str] = None  # Base64 audio
     mediaType: Optional[str] = "text" # text, audio, image, document
-    timestamp: Optional[Any] = None
+    fromMe: Optional[bool] = False
     timestamp: Optional[Any] = None
     originalMessage: Optional[Dict[str, Any]] = None
 
 @app.post("/webhook")
 async def whatsapp_webhook(payload: SimpleWhatsappPayload):
-    print(f"[IN/GW] Msg from {payload.remoteJid}: {payload.text}")
+    print(f"[IN/GW] [{payload.clientId}] Msg from {payload.remoteJid}: {payload.text}")
     
     sender = payload.remoteJid
     text_content = payload.text
+    client_id = payload.clientId
     
     # Handle Audio
     if payload.audio:
         try:
-             print("   [AUDIO] Processing audio from gateway...")
+             print(f"   [AUDIO] Processing audio from gateway for {client_id}...")
              
              # Run Cleanup (1 hour threshold)
              cleanup_old_files(DATA_DIR)
@@ -95,48 +97,50 @@ async def whatsapp_webhook(payload: SimpleWhatsappPayload):
              # The Session Logic (MENU_PRINCIPAL) handles 'media_type="audio"' by auto-handoff.
              text_content = "[AUDIO_RECEIVED]" 
              
-             # Obsolete code in hibernation:
-             # if not transcriber_service: ...
-             # Decode Base64 ...
-             # Transcribe ...
-                 
         except Exception as e:
             print(f"   [ERROR] Audio processing failed: {e}")
-            replier_service.send_text(sender, "Erro ao processar seu áudio. Pode escrever?")
+            # Note: replier_service would also need client_id if it works via Gateway...
+            # We'll see if Replier needs update next.
+            # replier_service.send_text(sender, "Erro ao processar seu áudio. Pode escrever?")
             return {"status": "error", "reason": str(e)}
 
-    
-    
-    if not text_content and payload.mediaType == "text":
+    if not text_content and payload.mediaType == "text" and not payload.fromMe:
         return {"status": "ignored", "reason": "no text"}
 
     # 3. Triage
-    intent = triage_service.detect_intent(text_content)
-    entities = triage_service.extract_entities(text_content)
+    # If fromMe, we don't need triage as we just want to update state
+    intent = None
+    entities = {}
+    if not payload.fromMe:
+        intent = triage_service.detect_intent(text_content)
+        entities = triage_service.extract_entities(text_content)
+        print(f"   [OUT] Intent: {intent} | Entities: {entities}")
     
-    print(f"   [OUT] Intent: {intent} | Entities: {entities}")
     # 4. Update Session
     phone = sender.split("@")[0]
     
     session_result = session_manager.update_session(
+        client_id=client_id,
         phone=phone,
         message=text_content,
         intent=intent,
         entities=entities,
         contact_name=payload.contactName or payload.pushName, # Prefer Contact, then Push
-        media_type=payload.mediaType
+        media_type=payload.mediaType,
+        from_me=payload.fromMe
     )
 
     if not session_result:
-        print("   [SESSION] Ignored (Empty/Filtered)")
-        return {"status": "ignored"}
+        print("   [SESSION] Ignored or Handled (fromMe/Empty)")
+        return {"status": "processed"}
 
     print(f"   [SESSION] State: {session_result.get('status', 'unknown')}")
     
     # 5. Auto-Reply
     reply_msg = session_result.get("reply_message")
     if reply_msg:
-        replier_service.send_text(sender, reply_msg)
+        # Replier service needs to know WHICH client is sending
+        replier_service.send_text(client_id, sender, reply_msg)
 
     return {
         "status": "processed",

@@ -11,11 +11,11 @@ class Replier:
             "Content-Type": "application/json"
         }
 
-    def send_text(self, remote_jid, text):
+    def send_text(self, client_id, remote_jid, text):
         """
         Sends a text message to the specified remoteJid via local Node gateway.
         """
-        url = "http://localhost:3000/send-message"
+        url = f"http://localhost:3000/send-message/{client_id}"
         
         payload = {
             "number": remote_jid,
@@ -23,12 +23,12 @@ class Replier:
         }
         
         try:
-            response = requests.post(url, json=payload)
+            response = requests.post(url, json=payload, timeout=20)
             if response.status_code == 200:
-                print(f"[REPLIER] Sent to {remote_jid}: {text}")
+                print(f"[REPLIER] [{client_id}] Sent to {remote_jid}: {text}")
             else:
-                print(f"[REPLIER] Gateway Error {response.status_code}: {response.text}")
+                print(f"[REPLIER] [{client_id}] Gateway Error {response.status_code}: {response.text}")
         except Exception as e:
-            print(f"[REPLIER] Error sending: {e}")
+            print(f"[REPLIER] [{client_id}] Error sending: {e}")
         
 

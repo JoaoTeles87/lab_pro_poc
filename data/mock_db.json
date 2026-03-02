@@ -1,31 +1,33 @@
 {
-    "patients": {
-        "123456": {
-            "name": "Maria Silva",
-            "dob": "1985-05-20",
-            "phone": "558199999999",
-            "exams": [
-                {
-                    "id": "EX001",
-                    "name": "Hemograma Completo",
-                    "date": "2023-10-25",
-                    "status": "PRONTO",
-                    "pdf_url": "https://example.com/laudo_maria.pdf"
-                },
-                {
-                    "id": "EX002",
-                    "name": "Colesterol Total",
-                    "date": "2023-10-25",
-                    "status": "EM_ANALISE",
-                    "pdf_url": null
-                }
-            ]
-        },
-        "111222": {
-            "name": "João Santos",
-            "dob": "1990-12-01",
-            "phone": "558188888888",
-            "exams": []
+    "clinica_teste": {
+        "patients": {
+            "123456": {
+                "name": "Maria Silva",
+                "dob": "1985-05-20",
+                "phone": "558199999999",
+                "exams": [
+                    {
+                        "id": "EX001",
+                        "name": "Hemograma Completo",
+                        "date": "2023-10-25",
+                        "status": "PRONTO",
+                        "pdf_url": "https://example.com/laudo_maria.pdf"
+                    },
+                    {
+                        "id": "EX002",
+                        "name": "Colesterol Total",
+                        "date": "2023-10-25",
+                        "status": "EM_ANALISE",
+                        "pdf_url": null
+                    }
+                ]
+            },
+            "111222": {
+                "name": "João Santos",
+                "dob": "1990-12-01",
+                "phone": "558188888888",
+                "exams": []
+            }
         }
     }
 }

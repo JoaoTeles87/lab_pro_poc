@@ -5,9 +5,10 @@ Para sua instância **OCI Micro (1GB RAM)**, rodamos os serviços diretamente no
 
 ### Stack
 *   **Gateway**: Node.js (via PM2)
+    *   *Otimização*: Utiliza "Idle Disconnect" para derrubar sockets inativos após 10min, economizando RAM. Autenticação via SQLite (`whatsapp-gateway/whatsapp_auth.db`).
 *   **Backend**: Python FastAPI (via PM2)
 *   **Banco de Dados**: **SQLite** (Arquivo `data/sessions.db`)
-    *   *Zero latência, Zero consumo de RAM extra.*
+    *   *Multitenancy*: Usa chaves compostas (`client_id`, `phone`) para isolar diferentes clínicas rodando no mesmo processo.
 *   **Dashboard**: Streamlit (via PM2)
 
 ## 2. Configurações de Produção
