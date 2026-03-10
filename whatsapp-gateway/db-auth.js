@@ -4,6 +4,9 @@ const { proto, BufferJSON, initAuthCreds } = require('@whiskeysockets/baileys');
 function useSQLiteAuthState(clientId, dbPath = './whatsapp_auth.db') {
     const db = new Database(dbPath);
 
+    // Enable WAL mode for better performance and concurrency
+    db.pragma('journal_mode = WAL');
+
     // Initialize tables
     db.prepare(`
         CREATE TABLE IF NOT EXISTS sessions (
@@ -40,6 +43,20 @@ function useSQLiteAuthState(clientId, dbPath = './whatsapp_auth.db') {
         db.prepare('DELETE FROM keys WHERE clientId = ?').run(clientId);
     };
 
+    // Transaction for atomic key updates - CRITICAL to prevent "Bad MAC"
+    const setKeysTransaction = db.transaction((data) => {
+        for (const type in data) {
+            for (const id in data[type]) {
+                const value = data[type][id];
+                if (value) {
+                    writeData(value, type, id);
+                } else {
+                    removeData(type, id);
+                }
+            }
+        }
+    });
+
     // Load initial creds
     const row = db.prepare('SELECT creds FROM sessions WHERE clientId = ?').get(clientId);
     let creds = row ? JSON.parse(row.creds, BufferJSON.reviver) : initAuthCreds();
@@ -52,7 +69,7 @@ function useSQLiteAuthState(clientId, dbPath = './whatsapp_auth.db') {
                     const data = {};
                     await Promise.all(
                         ids.map(async (id) => {
-                            let value = await readData(type, id);
+                            let value = readData(type, id);
                             if (type === 'app-state-sync-key' && value) {
                                 value = proto.Message.AppStateSyncKeyData.fromObject(value);
                             }
@@ -62,16 +79,7 @@ function useSQLiteAuthState(clientId, dbPath = './whatsapp_auth.db') {
                     return data;
                 },
                 set: async (data) => {
-                    for (const type in data) {
-                        for (const id in data[type]) {
-                            const value = data[type][id];
-                            if (value) {
-                                await writeData(value, type, id);
-                            } else {
-                                await removeData(type, id);
-                            }
-                        }
-                    }
+                    setKeysTransaction(data);
                 }
             }
         },
