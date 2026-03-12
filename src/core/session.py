@@ -8,7 +8,14 @@ from src.config import IGNORED_NUMBERS, TEST_PREFIX
 SESSION_FILE = os.path.join("data", "sessions.json")
 MOCK_DB_FILE = os.path.join("data", "mock_db.json")
 SESSION_TIMEOUT = 900 # 15 minutes for automated flows
-HUMAN_SESSION_TIMEOUT = 86400 # 24 hours for human mode
+HUMAN_SESSION_TIMEOUT = 7200 # 2 hours for human mode (7200s)
+
+PLAN_NAMES = {
+    "CASSI": "CASSI",
+    "BM": "PMPB / AFRAFEP / GEAP",
+    "CLINMELO": "Clinmelo",
+    "PARTICULAR": "Particular / Cartão / Pix"
+}
 
 class SessionManager:
     def __init__(self):
@@ -128,15 +135,19 @@ class SessionManager:
         
         if last_ts > 0 and (now - last_ts) > timeout_limit:
              if current_status == "AGUARDANDO_HUMANO":
-                 print(f"[SESSION] 24h Timeout detected for {phone}. Resetting to MENU.")
+                 print(f"[SESSION] 2h Timeout detected for {phone}. Resetting to MENU.")
                  session["status"] = "MENU_PRINCIPAL"
                  current_status = "MENU_PRINCIPAL"
+                 # Flag that we came from a stale human session to allow silent reset
+                 session["data"]["was_stale_human"] = True
              else:
                  print(f"[SESSION] Inactivity > 15m detected for {phone}. Yielding to HUMAN.")
                  session["status"] = "AGUARDANDO_HUMANO"
                  current_status = "AGUARDANDO_HUMANO"
                  
-             session["data"] = {}
+             session["data"].pop("interaction_count", None) # Optional: don't clear all data if needed?
+             # But usually we clear flow data for fresh start
+             session["data"] = {k: v for k, v in session["data"].items() if k == "was_stale_human"} 
              session["interaction_count"] += 1 # New interaction flow
 
         # Update last_updated for the current interaction
@@ -168,13 +179,15 @@ class SessionManager:
         # Note: if users says "oi" inside a flow, we might want to reset or ignore.
         # For this POC, strong reset on specific keywords helps navigation.
         # RESET logic (if user says "oi", "ola", "menu" intentionally)
-        # Note: We EXCLUDE 'AGUARDANDO_HUMANO' from this logic to respect the strict timeline/silence requested.
+        # Note: We now allow reset even in 'AGUARDANDO_HUMANO' if the input is an explicit command (1-5) or greeting.
         is_reset_input = (intent == "GREETING" or 
-                          any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "menu", "inicio"]) or 
-                          message.strip() in ["1", "2", "3", "4"])
+                          any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "menu", "inicio", "bom dia", "boa tarde", "boa noite"]) or 
+                          message.strip() in ["1", "2", "3", "4", "5"])
         
-        if is_reset_input and current_status != "AGUARDANDO_HUMANO":
+        if is_reset_input:
              current_status = "MENU_PRINCIPAL"
+             # Clear the stale flag if user interacted
+             session["data"].pop("was_stale_human", None)
              # Clear data
              session["data"] = {}
         
@@ -214,13 +227,29 @@ class SessionManager:
         if not message or not message.strip():
             return None # Do nothing
 
-        # 1. GLOBAL GRATITUDE HANDLER (Runs in ALL states, except AGUARDANDO_HUMANO)
+        # 1. INTELLIGENT SILENT RESET (Priority 1)
+        # If we just came from a timeout in AGUARDANDO_HUMANO, we stay silent UNLESS
+        # the user sends a greeting, a clear intent, or an explicit menu option.
+        is_greeting = (intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio", "bom dia", "boa tarde", "boa noite", "menu"]))
+        is_menu_opt = message.strip() in ["1", "2", "3", "4", "5"]
+        
+        if session["data"].get("was_stale_human"):
+            # If it's NOT a greeting, NOT a menu option, and NO clear intent found
+            if not is_greeting and not is_menu_opt and not intent:
+                session["data"].pop("was_stale_human", None)
+                print(f"   [SESSION] Intelligent Silent Reset for {phone}")
+                database.save_session(client_id, phone, session)
+                return None
+            else:
+                # User interacted with something valid, clear the flag and proceed
+                session["data"].pop("was_stale_human", None)
+
+        # 2. GLOBAL GRATITUDE HANDLER (Runs in ALL states, except AGUARDANDO_HUMANO)
         # If user says "obrigado", "valeu", etc., just reply politely and keep state.
         gratitude_words = ["obrigado", "obrigada", "obg", "valeu", "grato", "grata", "agradecido", "agradecida", "joia", "beleza", "tá bem", "ta bem", "certo", "ok", "brigado", "brigada"]
         if current_status != "AGUARDANDO_HUMANO" and any(x in normalize_text_simple(message) for x in gratitude_words) and len(message) < 20: 
              reply_action = "ACK"
              reply_message = "Disponha! Se precisar de algo, é só chamar. 😉 É sempre um prazer lhe atender."
-             # Return IMMEDIATELY to prevent state transition
              return {
                 "status": current_status,
                 "reply_message": reply_message,
@@ -229,16 +258,13 @@ class SessionManager:
 
         if current_status == "MENU_PRINCIPAL":
             # 0. Global Audio Handoff Rule
-            # Audio messages in the main menu often contain complex requests.
-            # We skip bot logic and send directly to human.
             if media_type == "audio":
                  session["status"] = "AGUARDANDO_HUMANO"
                  reply_action = "HANDOFF_AUDIO"
                  reply_message = "Recebi seu áudio! \nVou transferir para um de nossos atendentes dar prosseguimento. \nAguarde que logo retornamos. ⏳"
             
-            # Explicit Greeting Re-handling (to avoid "Sorry i didn't understand" for "Oi")
-            # Explicit Greeting Re-handling
-            elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio", "bom dia", "boa tarde", "boa noite", "tarde", "dia", "noite"]):
+            # 1. Greetings / Reset Explicitly
+            elif intent == "GREETING" or any(x in normalize_text_simple(message) for x in ["oi", "ola", "comecar", "inicio", "bom dia", "boa tarde", "boa noite", "menu"]):
                   reply_action = "SEND_MENU"
                   reply_message = ("Olá! Tudo bem? ✅\n\n"
                                "1. Solicitação de orçamentos 💰\n"
@@ -248,73 +274,72 @@ class SessionManager:
                                "5. Outras dúvidas\n"
                                "• Pedimos que siga as instruções e aguarde nosso atendimento")
             
-            # Smart Inference: If user mentions a Plan directly (e.g. "Bradesco"), assume ORCAMENTO
-            elif entities.get("PLANO_SAUDE"):
-                plan = entities["PLANO_SAUDE"]
-                friendly_plan = PLAN_NAMES.get(plan, plan)
-                session["data"]["plano"] = plan
-                session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
-                reply_action = "ASK_ORDER"
-                reply_message = f"Entendi, plano *{friendly_plan}*. 🏥\nPara orçamentos, por favor envie uma *foto do pedido médico* 📸 ou digite os exames."
-            
-            elif intent == "ORCAMENTO":
-                session["status"] = "ORCAMENTO_PEDIR_PLANO"
-                reply_action = "ASK_PLAN"
-                reply_message = "Certo, Orçamentos. 💰\nVocê possui plano de saúde ou pagamento *à vista/sem plano*?\n(Ex: CASSI, BM, CLINMELO, Particular)"
-            
+            # 2. Results Intent
             elif intent == "RESULTADO":
                 session["status"] = "RESULTADO_PEDIR_COMPROVANTE"
                 reply_action = "ASK_PROOF"
                 reply_message = "Para verificar seus resultados 🧪, por favor envie a *foto do comprovante* de pagamento/atendimento. 📸"
             
+            # 3. Budget Intent
+            elif intent == "ORCAMENTO" or entities.get("PLANO_SAUDE"):
+                # If they already mentioned a plan, skip the first question
+                if entities.get("PLANO_SAUDE"):
+                    plan = entities["PLANO_SAUDE"]
+                    session["data"]["plano"] = plan
+                    session["status"] = "ORCAMENTO_PEDIR_PEDIDO"
+                    reply_action = "ASK_ORDER"
+                    friendly_plan = PLAN_NAMES.get(plan, plan)
+                    reply_message = f"Entendi, plano *{friendly_plan}*. 🏥\nPara orçamentos, por favor envie uma *foto do pedido médico* 📸 ou digite os exames."
+                else:
+                    session["status"] = "ORCAMENTO_PEDIR_PLANO"
+                    reply_action = "ASK_PLAN"
+                    reply_message = "Certo, Orçamentos. 💰\nVocê possui plano de saúde ou pagamento *à vista/sem plano*?\n(Ex: CASSI, BM, CLINMELO, Particular)"
+
+            # 4. Schedule Intent
             elif intent == "AGENDAMENTO":
                 session["status"] = "AGENDAMENTO_PEDIR_PLANO"
                 reply_action = "ASK_PLAN_SCHED"
                 reply_message = "Agendamento Domiciliar 🏠.\nPara iniciar, qual seu *Plano de Saúde* ou seria *Particular*?\n(Aceitamos: CASSI, BM, CLINMELO ou Particular)"
                 
+            # 5. Toxic Intent
             elif intent == "TOXICOLOGICO":
                 reply_action = "INFO_TOXIC"
                 reply_message = "O exame Toxicológico 🚦 é realizado por agendamento.\nAtendimento *somente Particular* (R$ 150,00) ou *Pagamento à vista*.\nNecessário CNH. \nDeseja realizar?"
                 session["status"] = "TOXICOLOGICO_AGUARDANDO_RESPOSTA"
-            
-            # elif any(x in normalize_text_simple(message) for x in ["ok", "ta bem", "tá bem", "certo", "obrigado", "obg", "valeu", "entendi", "joia", "beleza"]):
-            #    # Handle simple acknowledgments without sending the full menu
-            #    reply_action = "ACK"
-            #    reply_message = "Disponha! Se precisar de algo, é só chamar. 😉"
-            #    # Keep in MENU_PRINCIPAL (passive)
 
+            # 6. Option 5 - Explicit Handoff
+            elif message.strip() == "5" or "outras duvidas" in normalize_text_simple(message):
+                session["status"] = "AGUARDANDO_HUMANO"
+                reply_action = "HANDOFF_DUVIDAS"
+                reply_message = "Entendido! Você será transferido para um de nossos atendentes. Aguarde um momento. ⏳"
+
+            # 7. Fallback (Normal MENU loop or handoff)
             else:
-                # Smart Menu Loop Prevention
-                last_act = session.get("last_action")
-                
-                # 1. Long Message / Complexity Handoff
-                # If message is long (> 60 chars) and no intent found, assume complex query -> Human
+                # Long Message / Complexity Handoff
                 if len(message) > 60:
                         session["status"] = "AGUARDANDO_HUMANO"
                         reply_action = "HANDOFF_COMPLEX"
                         reply_message = "Estou transferindo para um de nossos atendentes analisarem sua mensagem. Aguarde um momento. ⏳"
-                    
-                # 2. Loop Prevention
-                elif last_act in ["SEND_MENU", "WELCOME", "SENT_SHORT_MENU"]:
+                else:
+                    last_act = session.get("last_action")
+                    if last_act in ["SEND_MENU", "WELCOME", "SENT_SHORT_MENU"]:
                         reply_action = "SENT_SHORT_MENU"
                         reply_message = ("Desculpe, não entendi. 😕\nPoderia repetir ou digitar o número?\n\n"
-                                        "1. Orçamentos\n"
-                                        "2. Resultados\n"
-                                        "3. Agendamento\n"
-                                        "4. Toxicológico (CNH)\n"
-                                   "5. Outras dúvidas\n"
-                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
-                else:
-                    # Default Menu (Long Version)
-                    reply_action = "SEND_MENU"
-                    reply_message = ("Olá! Tudo bem? ✅\n\n"
-                                        "Em que posso ajudar hoje? 😄\n\n"
                                         "1. Orçamentos 💰\n"
-                                        "2. Resultados de exames 🧪\n"
-                                        "3. Agendamento Domiciliar 📆\n"
+                                        "2. Resultados 🧪\n"
+                                        "3. Agendamento 📆\n"
                                         "4. Toxicológico (CNH)\n"
-                                   "5. Outras dúvidas\n"
-                                   "• Pedimos que siga as instruções e aguarde nosso atendimento")
+                                        "5. Outras dúvidas\n"
+                                        "• Pedimos que siga as instruções ou aguarde um atendente.")
+                    else:
+                        reply_action = "SEND_MENU"
+                        reply_message = ("Olá! 👋 Em que posso ajudar hoje? ✅\n\n"
+                                        "1. Orçamentos 💰\n"
+                                        "2. Resultados 🧪\n"
+                                        "3. Agendamento 📆\n"
+                                        "4. Toxicológico (CNH)\n"
+                                        "5. Outras dúvidas\n"
+                                        "• Pedimos que siga as instruções ou aguarde um atendente.")
 
 
         elif current_status == "ORCAMENTO_PEDIR_PLANO":
@@ -395,7 +420,6 @@ class SessionManager:
                 valid_plan = True
             
             if valid_plan:
-                PLAN_NAMES = { "CASSI": "CASSI", "BM": "BM", "CLINMELO": "Clinmelo", "PARTICULAR": "Particular" }
                 friendly_plan = PLAN_NAMES.get(chosen_plan, chosen_plan)
 
                 session["data"]["plano"] = chosen_plan
